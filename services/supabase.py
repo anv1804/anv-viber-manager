@@ -53,6 +53,20 @@ def sync_profiles(profiles: list[dict], user_id: str, headers: dict) -> None:
     if not profiles:
         return
 
+    # Fetch existing client profiles to preserve their telegram_file_id backup link
+    file_id_map = {}
+    try:
+        url_get = f"{SUPABASE_URL}/rest/v1/client_profiles?user_id=eq.{user_id}"
+        resp_get = requests.get(url_get, headers=headers, timeout=10)
+        if resp_get.status_code == 200:
+            for p in resp_get.json():
+                pname = p.get("profile_name")
+                fid = p.get("telegram_file_id")
+                if pname and fid:
+                    file_id_map[pname] = fid
+    except Exception:
+        pass
+
     # Deduplicate payload in Python first (group by profile_name, keep latest)
     unique_profiles = {}
     for p in profiles:
@@ -60,6 +74,12 @@ def sync_profiles(profiles: list[dict], user_id: str, headers: dict) -> None:
         if pname not in unique_profiles or p.get("updated_at", "") > unique_profiles[pname].get("updated_at", ""):
             unique_profiles[pname] = p
     final_payload = list(unique_profiles.values())
+
+    # Restore telegram_file_id if present in DB but missing in the sync payload
+    for p in final_payload:
+        pname = p["profile_name"]
+        if pname in file_id_map and not p.get("telegram_file_id"):
+            p["telegram_file_id"] = file_id_map[pname]
 
     # Delete existing profiles of the same name individually to ensure no duplicates
     for p in final_payload:

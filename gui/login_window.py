@@ -30,9 +30,13 @@ class LoginWindow:
         self.root.configure(bg=BG_SIDEBAR)
         self.root.resizable(False, False)
 
-        self.session_file = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), "..", "session.json"
-        )
+        import sys
+        if getattr(sys, "frozen", False):
+            self.session_file = os.path.join(os.path.dirname(sys.executable), "session.json")
+        else:
+            self.session_file = os.path.normpath(
+                os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "session.json")
+            )
 
         self._center_window()
         self._setup_styles()

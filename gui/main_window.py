@@ -41,9 +41,14 @@ class AnvViberManager:
         self.root.configure(bg=BG_MAIN)
         self.root.resizable(False, False)
 
-        self.script_dir = os.path.dirname(os.path.abspath(__file__))
-        # profile storage is one level up (project root) / viber_profiles / <username>
-        self.script_dir = os.path.normpath(os.path.join(self.script_dir, ".."))
+        if getattr(sys, "frozen", False):
+            # Running as compiled binary (PyInstaller)
+            self.script_dir = os.path.dirname(sys.executable)
+        else:
+            # Running as raw python script
+            self.script_dir = os.path.dirname(os.path.abspath(__file__))
+            self.script_dir = os.path.normpath(os.path.join(self.script_dir, ".."))
+
         self.profiles_dir = os.path.join(self.script_dir, "viber_profiles", self.username)
         os.makedirs(self.profiles_dir, exist_ok=True)
 
@@ -625,23 +630,23 @@ class AnvViberManager:
                                 "updated_at":   datetime.utcnow().isoformat() + "Z",
                             })
 
-                            # Auto-backup
-                            viber_pc_dir = get_viber_pc_dir(os.path.join(self.profiles_dir, name))
-                            if viber_pc_dir and os.path.exists(viber_pc_dir) and os.listdir(viber_pc_dir):
-                                current_mtime = self.backup_mgr.get_dir_mtime(viber_pc_dir)
-                                if first_run:
-                                    self.backup_mgr.upload_mtimes[name] = current_mtime
-                                    continue
+                            # Auto-backup has been disabled. Only sync when Sync All is clicked.
+                            # viber_pc_dir = get_viber_pc_dir(os.path.join(self.profiles_dir, name))
+                            # if viber_pc_dir and os.path.exists(viber_pc_dir) and os.listdir(viber_pc_dir):
+                            #     current_mtime = self.backup_mgr.get_dir_mtime(viber_pc_dir)
+                            #     if first_run:
+                            #         self.backup_mgr.upload_mtimes[name] = current_mtime
+                            #         continue
 
-                                last_mtime    = self.backup_mgr.upload_mtimes.get(name, 0)
-                                last_upload_t = self.backup_mgr.upload_timestamps.get(name, 0)
-                                cooldown_ok   = (time.time() - last_upload_t) >= self.backup_mgr.cooldown_seconds
-                                if current_mtime != last_mtime and cooldown_ok and name not in self.backup_mgr.uploading_profiles:
-                                    threading.Thread(
-                                        target=self.backup_mgr.auto_upload_profile,
-                                        args=(name, viber_pc_dir, current_mtime, headers),
-                                        daemon=True,
-                                    ).start()
+                            #     last_mtime    = self.backup_mgr.upload_mtimes.get(name, 0)
+                            #     last_upload_t = self.backup_mgr.upload_timestamps.get(name, 0)
+                            #     cooldown_ok   = (time.time() - last_upload_t) >= self.backup_mgr.cooldown_seconds
+                            #     if current_mtime != last_mtime and cooldown_ok and name not in self.backup_mgr.uploading_profiles:
+                            #         threading.Thread(
+                            #             target=self.backup_mgr.auto_upload_profile,
+                            #             args=(name, viber_pc_dir, current_mtime, headers),
+                            #             daemon=True,
+                            #         ).start()
 
                     first_run = False
                     db.sync_profiles(profiles, self.user_id, headers)
@@ -662,7 +667,10 @@ class AnvViberManager:
             if cmd_type == "UPLOAD_PROFILE":
                 profile_path = os.path.join(self.profiles_dir, profile_name)
                 if not os.path.exists(profile_path):
-                    raise FileNotFoundError(f"Profile '{profile_name}' not found.")
+                    # We do not have this profile locally. Revert status to pending and ignore so the other machine can process it.
+                    db.update_command_status(cmd_id, "pending", headers)
+                    print(f"Ignoring UPLOAD_PROFILE for '{profile_name}' because it does not exist locally.")
+                    return
 
                 viber_pc_dir = get_viber_pc_dir(profile_path)
                 # If viber_pc_dir does not exist or is empty, create dummy files so sync doesn't crash
@@ -767,7 +775,10 @@ class AnvViberManager:
 
                 self.root.after(0, self.load_profiles)
 
-        except Exception:
+        except Exception as e:
+            import traceback
+            print(f"Error processing command {cmd_id}:", e)
+            traceback.print_exc()
             db.update_command_status(cmd_id, "failed", headers)
 
     def sync_all_profiles(self):
@@ -871,8 +882,9 @@ class AnvViberManager:
                 except Exception as e:
                     failed.append(f"{name}: {e}")
                 finally:
-                    bar["value"] = idx + 1
-                    lbl_count.config(text=f"{idx + 1} / {total}")
+                    if progress.winfo_exists():
+                        bar["value"] = idx + 1
+                        lbl_count.config(text=f"{idx + 1} / {total}")
 
             progress.destroy()
             self.root.after(0, self.load_profiles)
