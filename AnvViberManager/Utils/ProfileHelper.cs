@@ -386,8 +386,21 @@ namespace AnvViberManager.Utils
             }
             else
             {
-                // Linux: AppImage
-                if (viberPath.EndsWith(".AppImage", StringComparison.OrdinalIgnoreCase))
+                // Nếu đang chạy trên Linux nhưng lại chọn file chạy Viber của Windows (.exe) qua Wine
+                if (viberPath.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Lấy WINEPREFIX hiện tại hoặc mặc định
+                    var winePrefix = Environment.GetEnvironmentVariable("WINEPREFIX") ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".wine");
+                    startInfo.FileName = "wine";
+                    startInfo.Arguments = $"\"{viberPath}\"";
+
+                    // Chuyển đổi môi trường Windows tương thích cho Wine
+                    startInfo.EnvironmentVariables["WINEPREFIX"] = winePrefix;
+                    startInfo.EnvironmentVariables["USERPROFILE"] = $"Z:{home.Replace('/', '\\')}";
+                    startInfo.EnvironmentVariables["APPDATA"] = $"Z:{Path.Combine(profilesDir, name, "data", "Roaming").Replace('/', '\\')}";
+                    startInfo.EnvironmentVariables["LOCALAPPDATA"] = $"Z:{Path.Combine(profilesDir, name, "data", "Local").Replace('/', '\\')}";
+                }
+                else if (viberPath.EndsWith(".AppImage", StringComparison.OrdinalIgnoreCase))
                 {
                     startInfo.FileName = viberPath;
                 }
