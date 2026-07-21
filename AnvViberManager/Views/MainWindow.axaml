@@ -217,83 +217,85 @@
         <Grid RowDefinitions="*,Auto" Margin="16,20">
           
           <!-- Top Section: Logo & Actions -->
-          <StackPanel Grid.Row="0" Spacing="16">
-            <!-- Logo Header (ANV + viber.png + MANAGER) -->
-            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="0,8,0,0">
-              <TextBlock Text="ANV" FontSize="18" FontWeight="Bold" Foreground="#7F56D9" VerticalAlignment="Center"/>
-              <Image Source="avares://AnvViberManager/Assets/viber.png" Width="22" Height="22" VerticalAlignment="Center"/>
-              <TextBlock Text="MANAGER" FontSize="18" FontWeight="Bold" Foreground="#6941C6" VerticalAlignment="Center"/>
-            </StackPanel>
-            <Border Height="1" Background="#E4E4E7"/>
-
-            <!-- Group 1: Profile Creation -->
-            <Button Classes="PrimaryBtn" Click="OnCreateProfileClick">
-              <StackPanel Orientation="Horizontal" Spacing="10">
-                <Image Source="{svg:SvgImage avares://AnvViberManager/Assets/Icons/square-plus.svg}" Width="14" Height="14" IsHitTestVisible="False"/>
-                <TextBlock Text="New Profile" IsHitTestVisible="False"/>
+          <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="16" Margin="0,0,10,0">
+              <!-- Logo Header (ANV + viber.png + MANAGER) -->
+              <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="0,8,0,0">
+                <TextBlock Text="ANV" FontSize="18" FontWeight="Bold" Foreground="#7F56D9" VerticalAlignment="Center"/>
+                <Image Source="avares://AnvViberManager/Assets/viber.png" Width="22" Height="22" VerticalAlignment="Center"/>
+                <TextBlock Text="MANAGER" FontSize="18" FontWeight="Bold" Foreground="#6941C6" VerticalAlignment="Center"/>
               </StackPanel>
-            </Button>
+              <Border Height="1" Background="#E4E4E7"/>
 
-            <Border Height="1" Background="#E4E4E7"/>
-
-            <!-- Group 2: Run Control -->
-            <StackPanel Spacing="8">
-              <!-- Launch -->
-              <Button Classes="PrimaryBtn" Click="OnLaunchSelectedClick" IsEnabled="{Binding HasSelection}">
+              <!-- Group 1: Profile Creation -->
+              <Button Classes="PrimaryBtn" Click="OnCreateProfileClick">
                 <StackPanel Orientation="Horizontal" Spacing="10">
-                  <Image Source="{svg:SvgImage avares://AnvViberManager/Assets/Icons/play-circle.svg}" Width="14" Height="14" IsHitTestVisible="False"/>
-                  <TextBlock Text="Launch Selected" IsHitTestVisible="False"/>
+                  <Image Source="{svg:SvgImage avares://AnvViberManager/Assets/Icons/square-plus.svg}" Width="14" Height="14" IsHitTestVisible="False"/>
+                  <TextBlock Text="New Profile" IsHitTestVisible="False"/>
                 </StackPanel>
               </Button>
 
-              <!-- Stop -->
-              <Button Classes="SidebarBtn" Click="OnStopSelectedClick" IsEnabled="{Binding HasSelection}">
-                <StackPanel Orientation="Horizontal" Spacing="10">
-                  <Image Source="{svg:SvgImage avares://AnvViberManager/Assets/Icons/stop-square.svg}" Width="14" Height="14" IsHitTestVisible="False"/>
-                  <TextBlock Text="Stop Selected" IsHitTestVisible="False"/>
-                </StackPanel>
-              </Button>
-            </StackPanel>
+              <Border Height="1" Background="#E4E4E7"/>
 
-            <Border Height="1" Background="#E4E4E7"/>
+              <!-- Group 2: Run Control -->
+              <StackPanel Spacing="8">
+                <!-- Launch -->
+                <Button Classes="PrimaryBtn" Click="OnLaunchSelectedClick" IsEnabled="{Binding HasSelection}">
+                  <StackPanel Orientation="Horizontal" Spacing="10">
+                    <Image Source="{svg:SvgImage avares://AnvViberManager/Assets/Icons/play-circle.svg}" Width="14" Height="14" IsHitTestVisible="False"/>
+                    <TextBlock Text="Launch Selected" IsHitTestVisible="False"/>
+                  </StackPanel>
+                </Button>
 
-            <!-- Group 3: Data Backup -->
-            <StackPanel Spacing="8">
-              <!-- Export -->
-              <Button Classes="SidebarBtn" Click="OnExportProfilesClick" IsEnabled="{Binding HasSelection}">
-                <StackPanel Orientation="Horizontal" Spacing="10">
-                  <Image Source="{svg:SvgImage avares://AnvViberManager/Assets/Icons/file-export.svg}" Width="14" Height="14" IsHitTestVisible="False"/>
-                  <TextBlock Text="Export Profiles" IsHitTestVisible="False"/>
-                </StackPanel>
-              </Button>
-
-              <!-- Import -->
-              <Button Classes="SidebarBtn" Click="OnImportProfilesClick">
-                <StackPanel Orientation="Horizontal" Spacing="10">
-                  <Image Source="{svg:SvgImage avares://AnvViberManager/Assets/Icons/multiple.svg}" Width="14" Height="14" IsHitTestVisible="False"/>
-                  <TextBlock Text="Import Profiles" IsHitTestVisible="False"/>
-                </StackPanel>
-              </Button>
-
-              <!-- Sync Names -->
-              <Button Classes="SidebarBtn" Click="OnSyncNamesClick">
-                <StackPanel Orientation="Horizontal" Spacing="10">
-                  <Image Source="{svg:SvgImage avares://AnvViberManager/Assets/Icons/edit.svg}" Width="14" Height="14" IsHitTestVisible="False"/>
-                  <TextBlock Text="Sync Names" IsHitTestVisible="False"/>
-                </StackPanel>
-              </Button>
-            </StackPanel>
-
-            <Border Height="1" Background="#E4E4E7"/>
-
-            <!-- Group 4: Destructive Action -->
-            <Button Classes="DangerBtn" Click="OnDeleteSelectedClick" IsEnabled="{Binding HasSelection}">
-              <StackPanel Orientation="Horizontal" Spacing="10">
-                <Image Source="{svg:SvgImage avares://AnvViberManager/Assets/Icons/trash.svg}" Width="14" Height="14" IsHitTestVisible="False"/>
-                <TextBlock Text="Delete Selected" IsHitTestVisible="False"/>
+                <!-- Stop -->
+                <Button Classes="SidebarBtn" Click="OnStopSelectedClick" IsEnabled="{Binding HasSelection}">
+                  <StackPanel Orientation="Horizontal" Spacing="10">
+                    <Image Source="{svg:SvgImage avares://AnvViberManager/Assets/Icons/stop-square.svg}" Width="14" Height="14" IsHitTestVisible="False"/>
+                    <TextBlock Text="Stop Selected" IsHitTestVisible="False"/>
+                  </StackPanel>
+                </Button>
               </StackPanel>
-            </Button>
-          </StackPanel>
+
+              <Border Height="1" Background="#E4E4E7"/>
+
+              <!-- Group 3: Data Backup -->
+              <StackPanel Spacing="8">
+                <!-- Export -->
+                <Button Classes="SidebarBtn" Click="OnExportProfilesClick" IsEnabled="{Binding HasSelection}">
+                  <StackPanel Orientation="Horizontal" Spacing="10">
+                    <Image Source="{svg:SvgImage avares://AnvViberManager/Assets/Icons/file-export.svg}" Width="14" Height="14" IsHitTestVisible="False"/>
+                    <TextBlock Text="Export Profiles" IsHitTestVisible="False"/>
+                  </StackPanel>
+                </Button>
+
+                <!-- Import -->
+                <Button Classes="SidebarBtn" Click="OnImportProfilesClick">
+                  <StackPanel Orientation="Horizontal" Spacing="10">
+                    <Image Source="{svg:SvgImage avares://AnvViberManager/Assets/Icons/multiple.svg}" Width="14" Height="14" IsHitTestVisible="False"/>
+                    <TextBlock Text="Import Profiles" IsHitTestVisible="False"/>
+                  </StackPanel>
+                </Button>
+
+                <!-- Sync Names -->
+                <Button Classes="SidebarBtn" Click="OnSyncNamesClick">
+                  <StackPanel Orientation="Horizontal" Spacing="10">
+                    <Image Source="{svg:SvgImage avares://AnvViberManager/Assets/Icons/edit.svg}" Width="14" Height="14" IsHitTestVisible="False"/>
+                    <TextBlock Text="Sync Names" IsHitTestVisible="False"/>
+                  </StackPanel>
+                </Button>
+              </StackPanel>
+
+              <Border Height="1" Background="#E4E4E7"/>
+
+              <!-- Group 4: Destructive Action -->
+              <Button Classes="DangerBtn" Click="OnDeleteSelectedClick" IsEnabled="{Binding HasSelection}">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <Image Source="{svg:SvgImage avares://AnvViberManager/Assets/Icons/trash.svg}" Width="14" Height="14" IsHitTestVisible="False"/>
+                  <TextBlock Text="Delete Selected" IsHitTestVisible="False"/>
+                </StackPanel>
+              </Button>
+            </StackPanel>
+          </ScrollViewer>
 
           <!-- Bottom Section: Viber Path config (Moved to bottom of sidebar) -->
           <StackPanel Grid.Row="1" Spacing="5" Margin="0,15,0,5">
