@@ -75,7 +75,7 @@ class Dashboard:
         s.configure("TCombobox", fieldbackground=BG_CARD, background=BTN_DARK,
                     foreground=TEXT_MAIN, arrowcolor=TEXT_MUTED, borderwidth=0,
                     darkcolor=BG_CARD, lightcolor=BG_CARD, selectbackground="#2D2D3A",
-                    selectforeground=TEXT_MAIN, padding=(8, 5, 8, 5)) # padding matching entry
+                    selectforeground=TEXT_MAIN, padding=(6, 2, 6, 2)) # padding matching entry
         s.map("TCombobox", fieldbackground=[("readonly", BG_CARD)],
               foreground=[("readonly", TEXT_MAIN)])
 
@@ -151,25 +151,24 @@ class Dashboard:
         add_side_btn("📥 Import Profiles", "Dark.TButton", self._import_profile)
         add_side_btn("🗑 Delete Selected", "Danger.TButton", self._delete_selected, pady=(15, 4))
 
-        # ── MAIN CONTENT PANEL ───────────────────────────────────────────────
-        # Filter & Search Bar
-        filt_bar = tk.Frame(self.main_panel, bg=BG_MAIN, height=60)
-        filt_bar.pack(fill=tk.X, side=tk.TOP, padx=15, pady=(15, 10))
+        # Filter & Search Bar - Shrunk height for compact modern look
+        filt_bar = tk.Frame(self.main_panel, bg=BG_MAIN, height=42)
+        filt_bar.pack(fill=tk.X, side=tk.TOP, padx=15, pady=(15, 8))
         filt_bar.pack_propagate(False)
 
-        tk.Label(filt_bar, text="Profiles List", font=("Segoe UI", 12, "bold"),
+        tk.Label(filt_bar, text="Profiles List", font=("Segoe UI", 11, "bold"),
                  bg=BG_MAIN, fg=TEXT_MAIN).pack(side=tk.LEFT, fill=tk.Y)
 
         # Filter Controls wrapped inside a single CARD container
         self.search_card = tk.Frame(filt_bar, bg=BG_CARD, bd=0, highlightthickness=0)
         self.search_card.pack(side=tk.RIGHT, fill=tk.Y)
 
-        # Style configurations for aligned height
+        # Style configurations for aligned height - Compact Font 9
         def create_entry_container(parent, placeholder, var):
             entry = tk.Entry(parent, bg=BG_CARD, fg=TEXT_MAIN,
-                             insertbackground=TEXT_MAIN, font=("Segoe UI", 10), 
+                             insertbackground=TEXT_MAIN, font=("Segoe UI", 9), 
                              bd=0, highlightthickness=0, width=16)
-            entry.pack(side=tk.LEFT, padx=12, pady=5, ipady=3) 
+            entry.pack(side=tk.LEFT, padx=10, pady=3, ipady=1) 
             self._setup_placeholder(entry, placeholder, var)
             return entry
 
@@ -177,13 +176,13 @@ class Dashboard:
         self.entry_name = create_entry_container(self.search_card, "Tìm theo tên...", self._f_name)
 
         # Vertical separator line inside the card
-        tk.Frame(self.search_card, bg=BORDER_COLOR, width=1).pack(side=tk.LEFT, fill=tk.Y, pady=6)
+        tk.Frame(self.search_card, bg=BORDER_COLOR, width=1).pack(side=tk.LEFT, fill=tk.Y, pady=4)
 
         self._f_phone = tk.StringVar()
         self.entry_phone = create_entry_container(self.search_card, "Tìm theo SĐT...", self._f_phone)
 
         # Vertical separator line inside the card
-        tk.Frame(self.search_card, bg=BORDER_COLOR, width=1).pack(side=tk.LEFT, fill=tk.Y, pady=6)
+        tk.Frame(self.search_card, bg=BORDER_COLOR, width=1).pack(side=tk.LEFT, fill=tk.Y, pady=4)
 
         # Status filter dropdown with custom padding
         self._f_status = tk.StringVar(value="All Status")
@@ -191,16 +190,16 @@ class Dashboard:
         # Style Combobox inside the unified card
         cb = ttk.Combobox(self.search_card, textvariable=self._f_status,
                           values=["All Status", "Running", "Idle"],
-                          state="readonly", width=12, font=("Segoe UI", 10), style="TCombobox")
-        cb.pack(side=tk.LEFT, padx=8, ipady=3) 
+                          state="readonly", width=12, font=("Segoe UI", 9), style="TCombobox")
+        cb.pack(side=tk.LEFT, padx=6, ipady=1) 
         self._f_status.trace_add("write", lambda *_: self._apply_filter())
 
         # Vertical separator line inside the card
-        tk.Frame(self.search_card, bg=BORDER_COLOR, width=1).pack(side=tk.LEFT, fill=tk.Y, pady=6)
+        tk.Frame(self.search_card, bg=BORDER_COLOR, width=1).pack(side=tk.LEFT, fill=tk.Y, pady=4)
 
         # Clear filter button matching the exact height
         ttk.Button(self.search_card, text="✕", style="Dark.TButton", command=self._clear_filter,
-                   width=3).pack(side=tk.LEFT, padx=(4, 6), ipady=3)
+                   width=3).pack(side=tk.LEFT, padx=(2, 4), ipady=1)
 
         # Profile Treeview Table
         table_frame = tk.Frame(self.main_panel, bg=BG_MAIN)
