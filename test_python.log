@@ -1,6 +1,0 @@
-Fatal Python error: init_sys_streams: can't initialize sys standard streams
-Python runtime state: core initialized
-OSError: [WinError 6] Invalid handle
-
-Current thread 0x00000168 (most recent call first):
-  <no Python frame>

@@ -1,36 +1,30 @@
-#!/usr/bin/env python3
 """
-main.py — ANV Viber Manager entry point.
-Starts the login window; on success, launches the main application window.
+main.py — Entry point for ANV Viber Manager.
 """
+import sys
 import tkinter as tk
-
-from gui.login_window import LoginWindow
-from gui.main_window import AnvViberManager
-
-# Module-level handle so perform_logout() can destroy the active login window
-login_root: tk.Tk | None = None
+from gui.login import LoginWindow
 
 
-def start_main_app(user_id: str, username: str, expires_info: str, role: str) -> None:
-    """Called by LoginWindow on successful authentication."""
-    global login_root
-    if login_root is not None:
-        login_root.destroy()
-        login_root = None
+def start_app():
+    root = tk.Tk()
+    root.withdraw()
 
-    main_root = tk.Tk()
-    AnvViberManager(main_root, user_id, username, expires_info, role)
-    main_root.mainloop()
+    def on_login_success(user_id, username, expires_info, role):
+        root.withdraw()
+        app_win = tk.Toplevel()
+        app_win.protocol("WM_DELETE_WINDOW", lambda: _quit(app_win))
+        from gui.dashboard import Dashboard
+        Dashboard(app_win, user_id, username, expires_info, role)
+        app_win.mainloop()
 
+    def _quit(win):
+        win.destroy()
+        root.quit()
 
-def restart_login() -> None:
-    """Called by AnvViberManager.perform_logout() to re-show the login screen."""
-    global login_root
-    login_root = tk.Tk()
-    LoginWindow(login_root, on_success=start_main_app)
-    login_root.mainloop()
+    LoginWindow(root, on_login_success)
+    root.mainloop()
 
 
 if __name__ == "__main__":
-    restart_login()
+    start_app()

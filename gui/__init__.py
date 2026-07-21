@@ -1,1 +1,3 @@
-"""gui package — Tkinter UI windows."""
+"""
+gui/__init__.py
+"""
