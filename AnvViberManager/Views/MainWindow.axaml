@@ -274,6 +274,14 @@
                   <TextBlock Text="Import Profiles" IsHitTestVisible="False"/>
                 </StackPanel>
               </Button>
+
+              <!-- Sync Names -->
+              <Button Classes="SidebarBtn" Click="OnSyncNamesClick">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <Image Source="{svg:SvgImage avares://AnvViberManager/Assets/Icons/edit.svg}" Width="14" Height="14" IsHitTestVisible="False"/>
+                  <TextBlock Text="Sync Names" IsHitTestVisible="False"/>
+                </StackPanel>
+              </Button>
             </StackPanel>
 
             <Border Height="1" Background="#E4E4E7"/>

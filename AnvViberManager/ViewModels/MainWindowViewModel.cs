@@ -86,6 +86,7 @@ namespace AnvViberManager.ViewModels
         public ICommand LaunchProfileCommand { get; }
         public ICommand RenameProfileCommand { get; }
         public ICommand DeleteProfileCommand { get; }
+        public ICommand SyncNamesCommand { get; }
 
         private class AppSettings
         {
@@ -196,9 +197,72 @@ namespace AnvViberManager.ViewModels
             LaunchProfileCommand = new RelayCommand<ViberProfile>(LaunchProfile);
             RenameProfileCommand = new AsyncRelayCommand<ViberProfile>(RenameProfileAsync);
             DeleteProfileCommand = new AsyncRelayCommand<ViberProfile>(DeleteProfileAsync);
+            SyncNamesCommand = new RelayCommand(SyncNames);
 
             LoadProfiles();
             StartMonitoring();
+        }
+
+        public void SyncNames()
+        {
+            var activeProfiles = Profiles.ToList();
+            if (!activeProfiles.Any()) return;
+
+            // Dừng mọi profile đang chạy trước khi rename
+            foreach (var p in activeProfiles)
+            {
+                if (p.Status == "Running")
+                {
+                    ProfileHelper.KillProfile(_profilesDir, p.Name);
+                }
+            }
+
+            // Để tránh xung đột trùng tên thư mục trung gian khi đổi hàng loạt,
+            // ta rename sang tên tạm thời kèm GUID trước
+            var tempMappings = new System.Collections.Generic.List<(string oldPath, string tempPath, string finalName)>();
+            for (int i = 0; i < activeProfiles.Count; i++)
+            {
+                var oldName = activeProfiles[i].Name;
+                var finalName = $"Profile_{i + 1}";
+                var oldPath = Path.Combine(_profilesDir, oldName);
+                var tempPath = Path.Combine(_profilesDir, $"temp_sync_{Guid.NewGuid().ToString("N")}");
+                
+                if (Directory.Exists(oldPath))
+                {
+                    try
+                    {
+                        Directory.Move(oldPath, tempPath);
+                        tempMappings.Add((oldPath, tempPath, finalName));
+                    }
+                    catch (Exception ex)
+                    {
+                        SetStatus($"Sync error at temp rename: {ex.Message}");
+                        return;
+                    }
+                }
+            }
+
+            // Đổi từ tên tạm sang tên Profile_1, Profile_2... chính thức
+            foreach (var map in tempMappings)
+            {
+                var finalPath = Path.Combine(_profilesDir, map.finalName);
+                try
+                {
+                    if (Directory.Exists(finalPath))
+                    {
+                        Directory.Delete(finalPath, true);
+                    }
+                    Directory.Move(map.tempPath, finalPath);
+                }
+                catch (Exception ex)
+                {
+                    SetStatus($"Sync error at final rename: {ex.Message}");
+                    return;
+                }
+            }
+
+            LoadProfiles();
+            SetStatus("Synchronized profile names sequentially!");
         }
 
         // ──────────────────────────────────────── Load & Filters ──────────────────

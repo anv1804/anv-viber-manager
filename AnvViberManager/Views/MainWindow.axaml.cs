@@ -120,6 +120,14 @@ namespace AnvViberManager.Views
             }
         }
 
+        private void OnSyncNamesClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+        {
+            if (DataContext is MainWindowViewModel vm)
+            {
+                vm.SyncNames();
+            }
+        }
+
         private async void OnDeleteSelectedClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
         {
             if (DataContext is MainWindowViewModel vm)
