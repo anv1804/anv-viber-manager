@@ -150,35 +150,46 @@ class Dashboard:
         filt_bar.pack_propagate(False)
 
         tk.Label(filt_bar, text="Profiles List", font=("Segoe UI", 12, "bold"),
-                 bg=BG_MAIN, fg=TEXT_MAIN).pack(side=tk.LEFT)
+                 bg=BG_MAIN, fg=TEXT_MAIN).pack(side=tk.LEFT, fill=tk.Y)
 
         filt_controls = tk.Frame(filt_bar, bg=BG_MAIN)
         filt_controls.pack(side=tk.RIGHT, fill=tk.Y)
 
-        # Name filter with Placeholder
+        # Style configurations for aligned height
+        # Container widgets acting as wrappers with padding for Entry
+        def create_entry_container(parent, placeholder, var):
+            container = tk.Frame(parent, bg=BG_CARD, bd=1, relief=tk.FLAT)
+            container.pack(side=tk.LEFT, padx=6)
+            
+            entry = tk.Entry(container, bg=BG_CARD, fg=TEXT_MAIN,
+                             insertbackground=TEXT_MAIN, font=("Segoe UI", 9), bd=0, width=16)
+            entry.pack(side=tk.LEFT, padx=8, pady=5, ipady=1) # Padding text here
+            self._setup_placeholder(entry, placeholder, var)
+            return entry
+
         self._f_name = tk.StringVar()
-        self.entry_name = tk.Entry(filt_controls, bg=BG_CARD, fg=TEXT_MAIN,
-                                   insertbackground=TEXT_MAIN, font=("Segoe UI", 9), bd=0, width=16)
-        self.entry_name.pack(side=tk.LEFT, padx=4, ipady=4)
-        self._setup_placeholder(self.entry_name, "Tìm theo tên...", self._f_name)
+        self.entry_name = create_entry_container(filt_controls, "Tìm theo tên...", self._f_name)
 
-        # Phone filter with Placeholder
         self._f_phone = tk.StringVar()
-        self.entry_phone = tk.Entry(filt_controls, bg=BG_CARD, fg=TEXT_MAIN,
-                                    insertbackground=TEXT_MAIN, font=("Segoe UI", 9), bd=0, width=16)
-        self.entry_phone.pack(side=tk.LEFT, padx=4, ipady=4)
-        self._setup_placeholder(self.entry_phone, "Tìm theo SĐT...", self._f_phone)
+        self.entry_phone = create_entry_container(filt_controls, "Tìm theo SĐT...", self._f_phone)
 
-        # Status filter dropdown
+        # Status filter dropdown with custom padding
         self._f_status = tk.StringVar(value="All Status")
-        cb = ttk.Combobox(filt_controls, textvariable=self._f_status,
+        
+        cb_container = tk.Frame(filt_controls, bg=BG_MAIN)
+        cb_container.pack(side=tk.LEFT, padx=6)
+        
+        cb = ttk.Combobox(cb_container, textvariable=self._f_status,
                           values=["All Status", "Running", "Idle"],
-                          state="readonly", width=10, font=("Segoe UI", 9))
-        cb.pack(side=tk.LEFT, padx=4)
+                          state="readonly", width=12, font=("Segoe UI", 9))
+        cb.pack(side=tk.LEFT, ipady=2) # Matching height padding
         self._f_status.trace_add("write", lambda *_: self._apply_filter())
 
-        ttk.Button(filt_controls, text="✕", style="Dark.TButton", command=self._clear_filter,
-                   width=3).pack(side=tk.LEFT, padx=4, ipady=3)
+        # Clear filter button matching the exact height
+        btn_container = tk.Frame(filt_controls, bg=BG_MAIN)
+        btn_container.pack(side=tk.LEFT, padx=6)
+        ttk.Button(btn_container, text="✕", style="Dark.TButton", command=self._clear_filter,
+                   width=3).pack(side=tk.LEFT, ipady=1)
 
         # Profile Treeview Table
         table_frame = tk.Frame(self.main_panel, bg=BG_MAIN)
