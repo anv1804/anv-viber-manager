@@ -262,14 +262,14 @@ namespace AnvViberManager.Views
 
         // ──────────────────────────────────────── Hộp thoại nhập Text ───────────
 
-        public async Task<(string? Name, bool IsBusiness)?> AskCreateProfileDialogAsync(string defaultName)
+        public async Task<(string? Name, bool IsBusiness, int Quantity)?> AskCreateProfileDialogAsync(string defaultName)
         {
-            (string? Name, bool IsBusiness)? result = null;
+            (string? Name, bool IsBusiness, int Quantity)? result = null;
             var diag = new Window
             {
-                Title = "Create Profile",
+                Title = "Create Profiles",
                 Width = 320,
-                Height = 200,
+                Height = 250,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 Background = Avalonia.Media.Brush.Parse("#FFFFFF"),
                 CanResize = false,
@@ -277,12 +277,16 @@ namespace AnvViberManager.Views
                 FontFamily = FontFamily
             };
 
-            var stack = new StackPanel { Spacing = 12, Margin = new Avalonia.Thickness(20) };
-            stack.Children.Add(new TextBlock { Text = "Enter profile name:", Foreground = Avalonia.Media.Brush.Parse("#18181B"), FontWeight = Avalonia.Media.FontWeight.Medium, FontSize = 13 });
+            var stack = new StackPanel { Spacing = 10, Margin = new Avalonia.Thickness(20) };
+            stack.Children.Add(new TextBlock { Text = "Base name (prefix):", Foreground = Avalonia.Media.Brush.Parse("#18181B"), FontWeight = Avalonia.Media.FontWeight.Medium, FontSize = 13 });
             
-            var input = new TextBox { Text = defaultName, Width = 280, Height = 32, Background = Avalonia.Media.Brush.Parse("#FFFFFF"), Foreground = Avalonia.Media.Brush.Parse("#18181B"), BorderBrush = Avalonia.Media.Brush.Parse("#D4D4D8") };
+            var input = new TextBox { Text = "Profile", Width = 280, Height = 32, Background = Avalonia.Media.Brush.Parse("#FFFFFF"), Foreground = Avalonia.Media.Brush.Parse("#18181B"), BorderBrush = Avalonia.Media.Brush.Parse("#D4D4D8") };
             diag.Opened += (s, e) => { input.Focus(); if (!string.IsNullOrEmpty(input.Text)) input.SelectAll(); };
             stack.Children.Add(input);
+
+            stack.Children.Add(new TextBlock { Text = "Number of profiles to create:", Foreground = Avalonia.Media.Brush.Parse("#18181B"), FontWeight = Avalonia.Media.FontWeight.Medium, FontSize = 13 });
+            var inputQty = new TextBox { Text = "1", Width = 280, Height = 32, Background = Avalonia.Media.Brush.Parse("#FFFFFF"), Foreground = Avalonia.Media.Brush.Parse("#18181B"), BorderBrush = Avalonia.Media.Brush.Parse("#D4D4D8") };
+            stack.Children.Add(inputQty);
 
             var chkBusiness = new CheckBox { Content = "Business Profile", IsChecked = false, Foreground = Avalonia.Media.Brush.Parse("#18181B") };
             stack.Children.Add(chkBusiness);
@@ -297,7 +301,13 @@ namespace AnvViberManager.Views
                 FontWeight = Avalonia.Media.FontWeight.Bold,
                 Height = 32
             };
-            btn.Click += (s, e) => { result = (input.Text, chkBusiness.IsChecked ?? false); diag.Close(); };
+            btn.Click += (s, e) => {
+                if (int.TryParse(inputQty.Text, out int qty) && qty > 0)
+                {
+                    result = (input.Text, chkBusiness.IsChecked ?? false, qty);
+                    diag.Close();
+                }
+            };
             stack.Children.Add(btn);
             diag.Content = stack;
             await diag.ShowDialog(this);

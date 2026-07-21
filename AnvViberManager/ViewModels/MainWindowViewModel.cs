@@ -65,7 +65,7 @@ namespace AnvViberManager.ViewModels
         // Callbacks from View to ViewModel for interactive dialogs
         public Func<string, Task<string?>>? AskNameCallback { get; set; }
         public Func<string, Task<string?>>? AskRenameCallback { get; set; }
-        public Func<string, Task<(string? Name, bool IsBusiness)?>>? AskCreateProfileCallback { get; set; }
+        public Func<string, Task<(string? Name, bool IsBusiness, int Quantity)?>>? AskCreateProfileCallback { get; set; }
         public Func<string, bool, bool, Task<(string? Name, bool IsBusiness, bool IsScanned)?>>? AskEditProfileCallback { get; set; }
         public Func<Task<bool>>? ConfirmDeleteCallback { get; set; }
         public Func<string?, Task<string?>>? ExportCallback { get; set; }
@@ -415,37 +415,55 @@ namespace AnvViberManager.ViewModels
 
         public async Task CreateProfileAsync()
         {
+            // Ép buộc đồng bộ tên theo số thứ tự của các profile hiện tại trước khi tạo mới để tránh trùng đè/sai lệch
+            SyncNames();
+
             int nextNo = _allProfiles.Count + 1;
-            string defaultName = $"Profile_{nextNo}";
+            string defaultName = "Profile";
             
-            string name = defaultName;
+            string baseName = defaultName;
             bool isBusiness = false;
+            int quantity = 1;
 
             if (AskCreateProfileCallback != null)
             {
                 var res = await AskCreateProfileCallback(defaultName);
                 if (res == null || string.IsNullOrEmpty(res.Value.Name)) return;
-                name = res.Value.Name;
+                baseName = res.Value.Name;
                 isBusiness = res.Value.IsBusiness;
-            }
-            else if (AskNameCallback != null)
-            {
-                var input = await AskNameCallback(defaultName);
-                if (string.IsNullOrEmpty(input)) return;
-                name = input;
+                quantity = res.Value.Quantity;
             }
             else return;
 
-            var safeName = string.Concat(name.Select(c => char.IsLetterOrDigit(c) || c == '-' || c == '_' ? c : '_')).Trim('_');
-            if (string.IsNullOrEmpty(safeName)) safeName = $"Profile_{nextNo}";
+            var safeBaseName = string.Concat(baseName.Select(c => char.IsLetterOrDigit(c) || c == '-' || c == '_' ? c : '_')).Trim('_');
+            if (string.IsNullOrEmpty(safeBaseName)) safeBaseName = "Profile";
 
-            var dest = Path.Combine(_profilesDir, safeName);
-            if (Directory.Exists(dest)) return;
+            int createdCount = 0;
+            for (int i = 0; i < quantity; i++)
+            {
+                int currentNumber = nextNo + i;
+                string finalName = $"{safeBaseName}_{currentNumber}";
+                var dest = Path.Combine(_profilesDir, finalName);
+                
+                // Nếu trùng thư mục, tự động tăng chỉ số số thứ tự lên tiếp cho đến khi trống
+                while (Directory.Exists(dest))
+                {
+                    currentNumber++;
+                    finalName = $"{safeBaseName}_{currentNumber}";
+                    dest = Path.Combine(_profilesDir, finalName);
+                }
 
-            Directory.CreateDirectory(Path.Combine(dest, "data", "Home"));
-            ProfileHelper.SaveProfileMeta(dest, new ProfileHelper.ProfileMeta(isBusiness, false));
+                try
+                {
+                    Directory.CreateDirectory(Path.Combine(dest, "data", "Home"));
+                    ProfileHelper.SaveProfileMeta(dest, new ProfileHelper.ProfileMeta(isBusiness, false));
+                    createdCount++;
+                }
+                catch { }
+            }
+
             LoadProfiles();
-            SetStatus($"Created profile {safeName}!");
+            SetStatus($"Created {createdCount} profile(s) successfully!");
         }
 
         public void LaunchSelected()
