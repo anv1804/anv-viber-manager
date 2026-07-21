@@ -71,6 +71,14 @@ class Dashboard:
                         font=("Segoe UI", 9, "bold"), borderwidth=0, relief="flat")
             s.map(name, background=[("active", hover)])
 
+        # Dark theme Combobox
+        s.configure("TCombobox", fieldbackground=BG_CARD, background=BTN_DARK,
+                    foreground=TEXT_MAIN, arrowcolor=TEXT_MUTED, borderwidth=0,
+                    darkcolor=BG_CARD, lightcolor=BG_CARD, selectbackground="#2D2D3A",
+                    selectforeground=TEXT_MAIN)
+        s.map("TCombobox", fieldbackground=[("readonly", BG_CARD)],
+              foreground=[("readonly", TEXT_MAIN)])
+
         s.configure("Treeview", background=BG_CARD, foreground=TEXT_MAIN,
                     fieldbackground=BG_CARD, rowheight=32, borderwidth=0,
                     font=("Segoe UI", 9))
@@ -158,12 +166,12 @@ class Dashboard:
         # Style configurations for aligned height
         # Container widgets acting as wrappers with padding for Entry
         def create_entry_container(parent, placeholder, var):
-            container = tk.Frame(parent, bg=BG_CARD, bd=1, relief=tk.FLAT)
+            container = tk.Frame(parent, bg=BG_CARD, bd=0, highlightthickness=0)
             container.pack(side=tk.LEFT, padx=6)
             
             entry = tk.Entry(container, bg=BG_CARD, fg=TEXT_MAIN,
-                             insertbackground=TEXT_MAIN, font=("Segoe UI", 9), bd=0, width=16)
-            entry.pack(side=tk.LEFT, padx=8, pady=5, ipady=1) # Padding text here
+                             insertbackground=TEXT_MAIN, font=("Segoe UI", 10), bd=0, width=16)
+            entry.pack(side=tk.LEFT, padx=10, pady=5, ipady=3) # Padding text here
             self._setup_placeholder(entry, placeholder, var)
             return entry
 
@@ -181,15 +189,15 @@ class Dashboard:
         
         cb = ttk.Combobox(cb_container, textvariable=self._f_status,
                           values=["All Status", "Running", "Idle"],
-                          state="readonly", width=12, font=("Segoe UI", 9))
-        cb.pack(side=tk.LEFT, ipady=2) # Matching height padding
+                          state="readonly", width=12, font=("Segoe UI", 10))
+        cb.pack(side=tk.LEFT, ipady=3) # Matching height padding
         self._f_status.trace_add("write", lambda *_: self._apply_filter())
 
         # Clear filter button matching the exact height
         btn_container = tk.Frame(filt_controls, bg=BG_MAIN)
         btn_container.pack(side=tk.LEFT, padx=6)
         ttk.Button(btn_container, text="✕", style="Dark.TButton", command=self._clear_filter,
-                   width=3).pack(side=tk.LEFT, ipady=1)
+                   width=3).pack(side=tk.LEFT, ipady=3)
 
         # Profile Treeview Table
         table_frame = tk.Frame(self.main_panel, bg=BG_MAIN)
