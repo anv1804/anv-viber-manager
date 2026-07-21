@@ -1,0 +1,572 @@
+using System;
+using System.IO;
+using System.Linq;
+using System.Collections.ObjectModel;
+using System.Threading.Tasks;
+using System.Windows.Input;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using AnvViberManager.Models;
+using AnvViberManager.Utils;
+
+namespace AnvViberManager.ViewModels
+{
+    public partial class MainWindowViewModel : ViewModelBase
+    {
+        private readonly string _profilesDir;
+
+        [ObservableProperty]
+        private string? _viberPath;
+
+        [ObservableProperty]
+        private string _statusText = "Ready";
+
+        [ObservableProperty]
+        private string _titleText = "Profiles List (0)";
+
+        // Filters
+        [ObservableProperty]
+        private string _filterName = string.Empty;
+
+        [ObservableProperty]
+        private string _filterPhone = string.Empty;
+
+        [ObservableProperty]
+        private string _filterStatus = "All Status";
+
+        [ObservableProperty]
+        private string _filterBusiness = "All Business";
+
+        [ObservableProperty]
+        private string _filterScanned = "All Scanned";
+
+        private bool _isUpdatingSelection;
+
+        [ObservableProperty]
+        private bool? _isAllSelected = false;
+
+        [ObservableProperty]
+        private bool _hasSelection;
+
+        [ObservableProperty]
+        private string _appVersion = "v1.0.27";
+
+        public ObservableCollection<string> StatusOptions { get; } = new() { "All Status", "Running", "Idle" };
+        public ObservableCollection<string> BusinessOptions { get; } = new() { "All Business", "Business: Yes", "Business: No" };
+        public ObservableCollection<string> ScannedOptions { get; } = new() { "All Scanned", "Scanned: Yes", "Scanned: No" };
+
+        public ObservableCollection<ViberProfile> Profiles { get; } = new();
+        private readonly ObservableCollection<ViberProfile> _allProfiles = new();
+
+        // Callbacks from View to ViewModel for interactive dialogs
+        public Func<string, Task<string?>>? AskNameCallback { get; set; }
+        public Func<string, Task<string?>>? AskRenameCallback { get; set; }
+        public Func<string, Task<(string? Name, bool IsBusiness)?>>? AskCreateProfileCallback { get; set; }
+        public Func<string, bool, bool, Task<(string? Name, bool IsBusiness, bool IsScanned)?>>? AskEditProfileCallback { get; set; }
+        public Func<Task<bool>>? ConfirmDeleteCallback { get; set; }
+        public Func<string?, Task<string?>>? ExportCallback { get; set; }
+        public Func<Task<string[]?>>? ImportCallback { get; set; }
+
+        public ICommand CreateProfileCommand { get; }
+        public ICommand LaunchSelectedCommand { get; }
+        public ICommand StopSelectedCommand { get; }
+        public ICommand DeleteSelectedCommand { get; }
+        public ICommand ExportProfilesCommand { get; }
+        public ICommand ImportProfilesCommand { get; }
+        public ICommand BrowseViberCommand { get; }
+        public ICommand AutoDetectViberCommand { get; }
+        public ICommand ToggleSelectAllCommand { get; }
+        public ICommand ClearFilterCommand { get; }
+
+        public ICommand LaunchProfileCommand { get; }
+        public ICommand RenameProfileCommand { get; }
+        public ICommand DeleteProfileCommand { get; }
+
+        public MainWindowViewModel()
+        {
+            // Xác định thư mục lưu trữ profile:
+            // 1. Kiểm tra thư mục làm việc hiện tại (được ưu tiên khi chạy dev)
+            var currentDir = Directory.GetCurrentDirectory();
+            var devProfilesPath = Path.Combine(currentDir, "viber_profiles");
+            
+            if (Directory.Exists(devProfilesPath))
+            {
+                _profilesDir = devProfilesPath;
+            }
+            else
+            {
+                // 2. Fallback về thư mục chứa file chạy (.exe)
+                _profilesDir = Path.Combine(AppContext.BaseDirectory, "viber_profiles");
+            }
+            
+            Directory.CreateDirectory(_profilesDir);
+
+            ViberPath = ProfileHelper.DetectViberPath();
+
+            CreateProfileCommand = new AsyncRelayCommand(CreateProfileAsync);
+            LaunchSelectedCommand = new RelayCommand(LaunchSelected);
+            StopSelectedCommand = new RelayCommand(StopSelected);
+            DeleteSelectedCommand = new AsyncRelayCommand(DeleteSelectedAsync);
+            ExportProfilesCommand = new AsyncRelayCommand(ExportProfilesAsync);
+            ImportProfilesCommand = new AsyncRelayCommand(ImportProfilesAsync);
+            BrowseViberCommand = new RelayCommand<string>(path => { if (path != null) ViberPath = path; });
+            AutoDetectViberCommand = new RelayCommand(AutoDetectViber);
+            ToggleSelectAllCommand = new RelayCommand<bool>(ToggleSelectAll);
+            ClearFilterCommand = new RelayCommand(ClearFilter);
+
+            LaunchProfileCommand = new RelayCommand<ViberProfile>(LaunchProfile);
+            RenameProfileCommand = new AsyncRelayCommand<ViberProfile>(RenameProfileAsync);
+            DeleteProfileCommand = new AsyncRelayCommand<ViberProfile>(DeleteProfileAsync);
+
+            LoadProfiles();
+            StartMonitoring();
+        }
+
+        // ──────────────────────────────────────── Load & Filters ──────────────────
+
+        public void LoadProfiles()
+        {
+            _allProfiles.Clear();
+            if (Directory.Exists(_profilesDir))
+            {
+                var dirs = Directory.GetDirectories(_profilesDir).OrderBy(d => Directory.GetCreationTime(d));
+                foreach (var dir in dirs)
+                {
+                    var rawName = Path.GetFileName(dir);
+                    var name = ProfileHelper.SanitizeProfileName(_profilesDir, rawName);
+                    var pids = ProfileHelper.GetRunningPids(_profilesDir, name);
+                    var status = pids.Count > 0 ? "Running" : "Idle";
+                    var phone = ProfileHelper.GetProfilePhone(_profilesDir, name);
+                    var meta = ProfileHelper.LoadProfileMeta(Path.Combine(_profilesDir, name));
+
+                    _allProfiles.Add(new ViberProfile
+                    {
+                        Name = name,
+                        Phone = phone,
+                        Status = status,
+                        IsBusiness = meta.IsBusiness,
+                        IsScanned = meta.IsScanned
+                    });
+                }
+            }
+            ApplyFilter();
+        }
+
+        public void ApplyFilter()
+        {
+            var selectedBefore = Profiles.Where(p => p.IsSelected).Select(p => p.Name).ToHashSet();
+            
+            // Unsubscribe existing profiles to prevent memory leaks
+            foreach (var p in Profiles)
+            {
+                p.PropertyChanged -= OnProfilePropertyChanged;
+            }
+            Profiles.Clear();
+
+            var fn = FilterName.Trim().ToLower();
+            var fp = FilterPhone.Trim();
+            var fs = FilterStatus;
+            var fb = FilterBusiness;
+            var fsc = FilterScanned;
+
+            int idx = 1;
+            foreach (var p in _allProfiles)
+            {
+                if (!string.IsNullOrEmpty(fn) && !p.Name.ToLower().Contains(fn)) continue;
+                if (!string.IsNullOrEmpty(fp) && !p.Phone.Contains(fp)) continue;
+                if (fs != "All Status" && p.Status != fs) continue;
+
+                if (fb == "Business: Yes" && !p.IsBusiness) continue;
+                if (fb == "Business: No" && p.IsBusiness) continue;
+
+                if (fsc == "Scanned: Yes" && !p.IsScanned) continue;
+                if (fsc == "Scanned: No" && p.IsScanned) continue;
+
+                p.Index = idx++;
+                p.IsSelected = selectedBefore.Contains(p.Name);
+                
+                // Subscribe to detect manual checkbox clicking
+                p.PropertyChanged += OnProfilePropertyChanged;
+                Profiles.Add(p);
+            }
+
+            TitleText = $"Profiles List ({_allProfiles.Count})";
+            UpdateIsAllSelectedState();
+        }
+
+        private void ClearFilter()
+        {
+            FilterName = string.Empty;
+            FilterPhone = string.Empty;
+            FilterStatus = "All Status";
+            FilterBusiness = "All Business";
+            FilterScanned = "All Scanned";
+            ApplyFilter();
+        }
+
+        partial void OnFilterNameChanged(string value) => ApplyFilter();
+        partial void OnFilterPhoneChanged(string value) => ApplyFilter();
+        partial void OnFilterStatusChanged(string value) => ApplyFilter();
+        partial void OnFilterBusinessChanged(string value) => ApplyFilter();
+        partial void OnFilterScannedChanged(string value) => ApplyFilter();
+
+        partial void OnIsAllSelectedChanged(bool? value)
+        {
+            if (_isUpdatingSelection) return;
+            _isUpdatingSelection = true;
+            bool target = value ?? false;
+            foreach (var p in Profiles)
+            {
+                p.IsSelected = target;
+            }
+            HasSelection = target && Profiles.Count > 0;
+            _isUpdatingSelection = false;
+        }
+
+        private void OnProfilePropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(ViberProfile.IsSelected))
+            {
+                UpdateIsAllSelectedState();
+            }
+        }
+
+        private void UpdateIsAllSelectedState()
+        {
+            if (Profiles.Count == 0)
+            {
+                _isUpdatingSelection = true;
+                IsAllSelected = false;
+                HasSelection = false;
+                _isUpdatingSelection = false;
+                return;
+            }
+
+            if (_isUpdatingSelection) return;
+            
+            _isUpdatingSelection = true;
+            var selectedCount = Profiles.Count(p => p.IsSelected);
+            HasSelection = selectedCount > 0;
+
+            if (selectedCount == 0)
+            {
+                IsAllSelected = false;
+            }
+            else if (selectedCount == Profiles.Count)
+            {
+                IsAllSelected = true;
+            }
+            else
+            {
+                IsAllSelected = null; // Indeterminate
+            }
+            _isUpdatingSelection = false;
+        }
+
+        private void ToggleSelectAll(bool isChecked)
+        {
+            IsAllSelected = isChecked;
+        }
+
+        // ──────────────────────────────────────── Actions ─────────────────────────
+
+        public async Task CreateProfileAsync()
+        {
+            int nextNo = _allProfiles.Count + 1;
+            string defaultName = $"Profile_{nextNo}";
+            
+            string name = defaultName;
+            bool isBusiness = false;
+
+            if (AskCreateProfileCallback != null)
+            {
+                var res = await AskCreateProfileCallback(defaultName);
+                if (res == null || string.IsNullOrEmpty(res.Value.Name)) return;
+                name = res.Value.Name;
+                isBusiness = res.Value.IsBusiness;
+            }
+            else if (AskNameCallback != null)
+            {
+                var input = await AskNameCallback(defaultName);
+                if (string.IsNullOrEmpty(input)) return;
+                name = input;
+            }
+            else return;
+
+            var safeName = string.Concat(name.Select(c => char.IsLetterOrDigit(c) || c == '-' || c == '_' ? c : '_')).Trim('_');
+            if (string.IsNullOrEmpty(safeName)) safeName = $"Profile_{nextNo}";
+
+            var dest = Path.Combine(_profilesDir, safeName);
+            if (Directory.Exists(dest)) return;
+
+            Directory.CreateDirectory(Path.Combine(dest, "data", "Home"));
+            ProfileHelper.SaveProfileMeta(dest, new ProfileHelper.ProfileMeta(isBusiness, false));
+            LoadProfiles();
+            SetStatus($"Created profile {safeName}!");
+        }
+
+        public void LaunchSelected()
+        {
+            var selected = Profiles.Where(p => p.IsSelected).ToList();
+            if (!selected.Any()) return;
+            if (string.IsNullOrEmpty(ViberPath) || !File.Exists(ViberPath)) return;
+
+            foreach (var p in selected)
+            {
+                ProfileHelper.LaunchProfile(ViberPath, _profilesDir, p.Name);
+            }
+            LoadProfiles();
+        }
+
+        public void StopSelected()
+        {
+            var selected = Profiles.Where(p => p.IsSelected).ToList();
+            foreach (var p in selected)
+            {
+                ProfileHelper.KillProfile(_profilesDir, p.Name);
+            }
+            LoadProfiles();
+        }
+
+        public async Task DeleteSelectedAsync()
+        {
+            var selected = Profiles.Where(p => p.IsSelected).ToList();
+            if (!selected.Any()) return;
+
+            if (ConfirmDeleteCallback != null && await ConfirmDeleteCallback())
+            {
+                foreach (var p in selected)
+                {
+                    ProfileHelper.KillProfile(_profilesDir, p.Name);
+                    try { Directory.Delete(Path.Combine(_profilesDir, p.Name), true); } catch { }
+                }
+                LoadProfiles();
+                SetStatus("Deleted selected profiles.");
+            }
+        }
+
+        public async Task ExportProfilesAsync()
+        {
+            if (ExportCallback == null) return;
+            var selected = Profiles.Where(p => p.IsSelected).ToList();
+            if (!selected.Any()) return;
+
+            if (selected.Count == 1)
+            {
+                var name = selected[0].Name;
+                var savePath = await ExportCallback(name);
+                if (string.IsNullOrEmpty(savePath)) return;
+
+                var profilePath = Path.Combine(_profilesDir, name);
+                var vd = ProfileHelper.GetViberPcDir(profilePath);
+                if (string.IsNullOrEmpty(vd) || !Directory.Exists(vd))
+                {
+                    SetStatus("Export failed: Profile has no session data.");
+                    return;
+                }
+
+                ProfileHelper.PackProfile(profilePath, savePath);
+                SetStatus($"Exported {name} successfully.");
+            }
+            else
+            {
+                // Export multiple profiles to folder
+                var savePath = await ExportCallback(null);
+                if (string.IsNullOrEmpty(savePath) || !Directory.Exists(savePath)) return;
+
+                int ok = 0;
+                foreach (var p in selected)
+                {
+                    var pDir = Path.Combine(_profilesDir, p.Name);
+                    var vd = ProfileHelper.GetViberPcDir(pDir);
+                    if (!string.IsNullOrEmpty(vd) && Directory.Exists(vd))
+                    {
+                        ProfileHelper.PackProfile(pDir, Path.Combine(savePath, $"{p.Name}.viberprofile"));
+                        ok++;
+                    }
+                }
+                SetStatus($"Exported {ok}/{selected.Count} profiles.");
+            }
+        }
+
+        public async Task ImportProfilesAsync()
+        {
+            if (ImportCallback == null) return;
+            var paths = await ImportCallback();
+            if (paths == null || !paths.Any()) return;
+
+            int ok = 0;
+            foreach (var p in paths)
+            {
+                var baseName = StringExtensions.GetFileNameWithoutMatches(Path.GetFileName(p));
+                var safeName = string.Concat(baseName.Where(c => char.IsLetterOrDigit(c) || c == '-' || c == '_' || c == ' ')).Trim();
+                
+                var dest = Path.Combine(_profilesDir, safeName);
+                int count = 1;
+                while (Directory.Exists(dest))
+                {
+                    dest = Path.Combine(_profilesDir, $"{safeName}_{count}");
+                    count++;
+                }
+
+                try
+                {
+                    ProfileHelper.UnpackProfile(p, dest);
+                    ok++;
+                }
+                catch { }
+            }
+            LoadProfiles();
+            SetStatus($"Imported {ok} profile(s).");
+        }
+
+        public void AutoDetectViber()
+        {
+            var p = ProfileHelper.DetectViberPath();
+            if (!string.IsNullOrEmpty(p))
+            {
+                ViberPath = p;
+                SetStatus($"Auto-detected Viber executable at: {p}");
+            }
+            else
+            {
+                SetStatus("Could not auto-detect Viber. Please select file manually via Browse.");
+            }
+        }
+
+        public void LaunchProfile(ViberProfile? p)
+        {
+            if (p == null) return;
+            if (p.Status == "Running")
+            {
+                ProfileHelper.KillProfile(_profilesDir, p.Name);
+                SetStatus($"Stopped profile {p.Name}.");
+            }
+            else
+            {
+                if (string.IsNullOrEmpty(ViberPath) || !File.Exists(ViberPath))
+                {
+                    SetStatus("Viber executable path not found.");
+                    return;
+                }
+                ProfileHelper.LaunchProfile(ViberPath, _profilesDir, p.Name);
+                SetStatus($"Launched profile {p.Name}.");
+            }
+            LoadProfiles();
+        }
+
+        public async Task RenameProfileAsync(ViberProfile? p)
+        {
+            if (p == null) return;
+            string newName = p.Name;
+            bool isBusiness = p.IsBusiness;
+            bool isScanned = p.IsScanned;
+
+            if (AskEditProfileCallback != null)
+            {
+                var res = await AskEditProfileCallback(p.Name, p.IsBusiness, p.IsScanned);
+                if (res == null || string.IsNullOrEmpty(res.Value.Name)) return;
+                newName = res.Value.Name;
+                isBusiness = res.Value.IsBusiness;
+                isScanned = res.Value.IsScanned;
+            }
+            else if (AskRenameCallback != null)
+            {
+                var input = await AskRenameCallback(p.Name);
+                if (string.IsNullOrEmpty(input)) return;
+                newName = input;
+            }
+
+            var safeName = string.Concat(newName.Select(c => char.IsLetterOrDigit(c) || c == '-' || c == '_' ? c : '_')).Trim('_');
+            if (string.IsNullOrEmpty(safeName)) return;
+
+            var oldPath = Path.Combine(_profilesDir, p.Name);
+            var newPath = Path.Combine(_profilesDir, safeName);
+
+            if (oldPath != newPath && Directory.Exists(oldPath) && !Directory.Exists(newPath))
+            {
+                try
+                {
+                    if (p.Status == "Running")
+                    {
+                        ProfileHelper.KillProfile(_profilesDir, p.Name);
+                    }
+
+                    Directory.Move(oldPath, newPath);
+                }
+                catch (Exception ex)
+                {
+                    SetStatus($"Rename failed: {ex.Message}");
+                }
+            }
+
+            var targetPath = Directory.Exists(newPath) ? newPath : oldPath;
+            ProfileHelper.SaveProfileMeta(targetPath, new ProfileHelper.ProfileMeta(isBusiness, isScanned));
+            LoadProfiles();
+        }
+
+        public async Task DeleteProfileAsync(ViberProfile? p)
+        {
+            if (p == null) return;
+            if (ConfirmDeleteCallback != null && await ConfirmDeleteCallback())
+            {
+                ProfileHelper.KillProfile(_profilesDir, p.Name);
+                try
+                {
+                    Directory.Delete(Path.Combine(_profilesDir, p.Name), true);
+                    SetStatus($"Deleted profile {p.Name}.");
+                    LoadProfiles();
+                }
+                catch (Exception ex)
+                {
+                    SetStatus($"Delete failed: {ex.Message}");
+                }
+            }
+        }
+
+        // ──────────────────────────────────────── Monitoring ──────────────────────
+
+        private void StartMonitoring()
+        {
+            Task.Run(async () =>
+            {
+                while (true)
+                {
+                    await Task.Delay(1500);
+                    // Cập nhật trạng thái running
+                    bool changed = false;
+                    foreach (var p in _allProfiles)
+                    {
+                        var pids = ProfileHelper.GetRunningPids(_profilesDir, p.Name);
+                        var isNowRunning = pids.Count > 0;
+                        var wasRunning = p.Status == "Running";
+                        if (isNowRunning != wasRunning)
+                        {
+                            p.Status = isNowRunning ? "Running" : "Idle";
+                            changed = true;
+                        }
+                    }
+                    if (changed)
+                    {
+                        Avalonia.Threading.Dispatcher.UIThread.Post(ApplyFilter);
+                    }
+                }
+            });
+        }
+
+        private void SetStatus(string msg)
+        {
+            StatusText = msg;
+            Task.Delay(2500).ContinueWith(_ => StatusText = "Ready");
+        }
+    }
+
+    public static class StringExtensions
+    {
+        public static string GetFileNameWithoutMatches(string filename)
+        {
+            var idx = filename.LastIndexOf('.');
+            return idx > 0 ? filename.Substring(0, idx) : filename;
+        }
+    }
+}

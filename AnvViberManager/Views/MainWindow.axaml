@@ -1,0 +1,530 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:AnvViberManager.ViewModels"
+        xmlns:models="using:AnvViberManager.Models"
+        xmlns:svg="using:Avalonia.Svg"
+        mc:Ignorable="d" d:DesignWidth="980" d:DesignHeight="640"
+        x:Class="AnvViberManager.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="ANV Viber Manager"
+        Width="1080" Height="660"
+        MinWidth="900" MinHeight="550"
+        CanResize="True"
+        WindowStartupLocation="CenterScreen"
+         Background="#FFFFFF"
+         FontFamily="{StaticResource RobotoFont}">
+
+  <Design.DataContext>
+    <vm:MainWindowViewModel/>
+  </Design.DataContext>
+
+  <Window.Styles>
+    <!-- Style cho các Button ở Sidebar (Flat sáng hoàn toàn) -->
+    <Style Selector="Button.SidebarBtn">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Foreground" Value="#3F3F46"/>
+      <Setter Property="Padding" Value="10,8"/>
+      <Setter Property="CornerRadius" Value="4"/>
+      <Setter Property="HorizontalAlignment" Value="Stretch"/>
+      <Setter Property="HorizontalContentAlignment" Value="Left"/>
+      <Setter Property="FontWeight" Value="Normal"/>
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="BorderBrush" Value="Transparent"/>
+    </Style>
+    <Style Selector="Button.SidebarBtn:pointerover">
+      <Setter Property="Background" Value="#F3F0FF"/>
+      <Setter Property="Foreground" Value="#7F56D9"/>
+      <Setter Property="BorderBrush" Value="#D6BBFB"/>
+    </Style>
+    
+    <Style Selector="Button.PrimaryBtn">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Foreground" Value="#18181B"/>
+      <Setter Property="Padding" Value="10,8"/>
+      <Setter Property="CornerRadius" Value="4"/>
+      <Setter Property="HorizontalAlignment" Value="Stretch"/>
+      <Setter Property="HorizontalContentAlignment" Value="Left"/>
+      <Setter Property="FontWeight" Value="Normal"/>
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="BorderBrush" Value="Transparent"/>
+    </Style>
+    <Style Selector="Button.PrimaryBtn:pointerover">
+      <Setter Property="Background" Value="#F3F0FF"/>
+      <Setter Property="Foreground" Value="#7F56D9"/>
+      <Setter Property="BorderBrush" Value="#D6BBFB"/>
+    </Style>
+
+    <Style Selector="Button:disabled /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderBrush" Value="Transparent"/>
+    </Style>
+
+    <Style Selector="Button.SidebarBtn:disabled">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Foreground" Value="#A1A1AA"/>
+      <Setter Property="Opacity" Value="0.35"/>
+      <Setter Property="BorderBrush" Value="Transparent"/>
+    </Style>
+    
+    <Style Selector="Button.PrimaryBtn:disabled">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Foreground" Value="#A1A1AA"/>
+      <Setter Property="Opacity" Value="0.35"/>
+      <Setter Property="BorderBrush" Value="Transparent"/>
+    </Style>
+
+    <Style Selector="Button.DangerBtn">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Foreground" Value="#D92D20"/>
+      <Setter Property="Padding" Value="10,8"/>
+      <Setter Property="CornerRadius" Value="4"/>
+      <Setter Property="HorizontalAlignment" Value="Stretch"/>
+      <Setter Property="HorizontalContentAlignment" Value="Left"/>
+      <Setter Property="FontWeight" Value="Normal"/>
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="BorderBrush" Value="Transparent"/>
+    </Style>
+    <Style Selector="Button.DangerBtn:pointerover">
+      <Setter Property="Background" Value="#FEE4E2"/>
+      <Setter Property="Foreground" Value="#B42318"/>
+      <Setter Property="BorderBrush" Value="#FDA29B"/>
+    </Style>
+    <Style Selector="Button.DangerBtn:disabled">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Foreground" Value="#A1A1AA"/>
+      <Setter Property="Opacity" Value="0.35"/>
+      <Setter Property="BorderBrush" Value="Transparent"/>
+    </Style>
+
+    <!-- Action Bar Buttons Style (Light opacity default, full opacity on hover) -->
+    <Style Selector="Button.ActionBtn">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="CornerRadius" Value="4"/>
+      <Setter Property="Width" Value="22"/>
+      <Setter Property="Height" Value="22"/>
+      <Setter Property="Padding" Value="0"/>
+      <Setter Property="Opacity" Value="0.45"/>
+    </Style>
+    <Style Selector="Button.ActionBtn:pointerover">
+      <Setter Property="Background" Value="#E4E4E7"/>
+      <Setter Property="Opacity" Value="1.0"/>
+    </Style>
+    <Style Selector="Button.ActionBtn.Danger:pointerover">
+      <Setter Property="Background" Value="#FEE4E2"/>
+      <Setter Property="Opacity" Value="1.0"/>
+    </Style>
+
+    <!-- Custom DataGrid (Flat sáng hoàn toàn, nền trắng) -->
+    <Style Selector="DataGrid">
+      <Setter Property="Background" Value="#FFFFFF"/>
+      <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+    <Style Selector="DataGridColumnHeader">
+      <Setter Property="Background" Value="#F4F4F5"/>
+      <Setter Property="Foreground" Value="#475467"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="Height" Value="36"/>
+      <Setter Property="BorderThickness" Value="0,0,0,1"/>
+      <Setter Property="BorderBrush" Value="#E4E4E7"/>
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  Padding="0">
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalAlignment="Center"/>
+          </Border>
+        </ControlTemplate>
+      </Setter>
+    </Style>
+    <Style Selector="DataGridRow">
+      <Setter Property="Background" Value="#FFFFFF"/>
+      <Setter Property="Foreground" Value="#1F1F23"/>
+      <Setter Property="Height" Value="38"/>
+    </Style>
+    <!-- Running status row style (Soft green background mapped via class) -->
+    <Style Selector="DataGridRow.running">
+      <Setter Property="Background" Value="#F6FEF9"/>
+    </Style>
+    <Style Selector="DataGridRow.running /template/ Rectangle#BackgroundRectangle">
+      <Setter Property="Fill" Value="#F6FEF9"/>
+    </Style>
+
+    <!-- PointerOver (Hover) state -->
+    <Style Selector="DataGridRow:pointerover /template/ Rectangle#BackgroundRectangle">
+      <Setter Property="Fill" Value="#F4F4F5"/>
+    </Style>
+    <Style Selector="DataGridRow.running:pointerover /template/ Rectangle#BackgroundRectangle">
+      <Setter Property="Fill" Value="#ECFDF3"/>
+    </Style>
+    <Style Selector="DataGridRow:pointerover TextBlock">
+      <Setter Property="Foreground" Value="#7F56D9"/>
+    </Style>
+
+    <!-- Selected state (Soft indigo/blue background) -->
+    <Style Selector="DataGridRow:selected /template/ Rectangle#BackgroundRectangle">
+      <Setter Property="Fill" Value="#EEF4FF"/>
+    </Style>
+    <Style Selector="DataGridRow.running:selected /template/ Rectangle#BackgroundRectangle">
+      <Setter Property="Fill" Value="#D1FADF"/>
+    </Style>
+
+    <!-- Global Style to Center Alignment for DataGrid Columns -->
+    <Style Selector="DataGridCell">
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+      <Setter Property="FocusAdorner" Value="{x:Null}"/>
+      <Setter Property="Focusable" Value="False"/>
+    </Style>
+    <Style Selector="DataGridCell:focus">
+      <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+    <Style Selector="DataGridCell /template/ Grid#FocusVisual">
+      <Setter Property="IsVisible" Value="False"/>
+    </Style>
+    <Style Selector="DataGridCell:focus /template/ Grid#FocusVisual">
+      <Setter Property="IsVisible" Value="False"/>
+    </Style>
+    <Style Selector="DataGridCell /template/ Border#CellBorder">
+      <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+    <Style Selector="DataGridCell:focus /template/ Border#CellBorder">
+      <Setter Property="BorderThickness" Value="0"/>
+    </Style>
+    <Style Selector="DataGridCell TextBlock">
+      <Setter Property="VerticalAlignment" Value="Center"/>
+      <Setter Property="Foreground" Value="#1F1F23"/>
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="FontWeight" Value="Normal"/>
+    </Style>
+  </Window.Styles>
+
+  <Grid RowDefinitions="*,Auto">
+    <Grid Grid.Row="0" ColumnDefinitions="260,*">
+      
+      <!-- ── SIDEBAR (LEFT) ──────────────────────────────────────────────── -->
+      <Border Grid.Column="0" Background="#F4F4F5" BorderBrush="#E4E4E7" BorderThickness="0,0,1,0">
+        <Grid RowDefinitions="*,Auto" Margin="16,20">
+          
+          <!-- Top Section: Logo & Actions -->
+          <StackPanel Grid.Row="0" Spacing="16">
+            <!-- Logo Header (ANV + viber.png + MANAGER) -->
+            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="0,8,0,0">
+              <TextBlock Text="ANV" FontSize="18" FontWeight="Bold" Foreground="#7F56D9" VerticalAlignment="Center"/>
+              <Image Source="avares://AnvViberManager/Assets/viber.png" Width="22" Height="22" VerticalAlignment="Center"/>
+              <TextBlock Text="MANAGER" FontSize="18" FontWeight="Bold" Foreground="#6941C6" VerticalAlignment="Center"/>
+            </StackPanel>
+            <Border Height="1" Background="#E4E4E7"/>
+
+            <!-- Group 1: Profile Creation -->
+            <Button Classes="PrimaryBtn" Click="OnCreateProfileClick">
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <Image Source="{svg:SvgImage avares://AnvViberManager/Assets/Icons/square-plus.svg}" Width="14" Height="14" IsHitTestVisible="False"/>
+                <TextBlock Text="New Profile" IsHitTestVisible="False"/>
+              </StackPanel>
+            </Button>
+
+            <Border Height="1" Background="#E4E4E7"/>
+
+            <!-- Group 2: Run Control -->
+            <StackPanel Spacing="8">
+              <!-- Launch -->
+              <Button Classes="PrimaryBtn" Click="OnLaunchSelectedClick" IsEnabled="{Binding HasSelection}">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <Image Source="{svg:SvgImage avares://AnvViberManager/Assets/Icons/play-circle.svg}" Width="14" Height="14" IsHitTestVisible="False"/>
+                  <TextBlock Text="Launch Selected" IsHitTestVisible="False"/>
+                </StackPanel>
+              </Button>
+
+              <!-- Stop -->
+              <Button Classes="SidebarBtn" Click="OnStopSelectedClick" IsEnabled="{Binding HasSelection}">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <Image Source="{svg:SvgImage avares://AnvViberManager/Assets/Icons/stop-square.svg}" Width="14" Height="14" IsHitTestVisible="False"/>
+                  <TextBlock Text="Stop Selected" IsHitTestVisible="False"/>
+                </StackPanel>
+              </Button>
+            </StackPanel>
+
+            <Border Height="1" Background="#E4E4E7"/>
+
+            <!-- Group 3: Data Backup -->
+            <StackPanel Spacing="8">
+              <!-- Export -->
+              <Button Classes="SidebarBtn" Click="OnExportProfilesClick" IsEnabled="{Binding HasSelection}">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <Image Source="{svg:SvgImage avares://AnvViberManager/Assets/Icons/file-export.svg}" Width="14" Height="14" IsHitTestVisible="False"/>
+                  <TextBlock Text="Export Profiles" IsHitTestVisible="False"/>
+                </StackPanel>
+              </Button>
+
+              <!-- Import -->
+              <Button Classes="SidebarBtn" Click="OnImportProfilesClick">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <Image Source="{svg:SvgImage avares://AnvViberManager/Assets/Icons/multiple.svg}" Width="14" Height="14" IsHitTestVisible="False"/>
+                  <TextBlock Text="Import Profiles" IsHitTestVisible="False"/>
+                </StackPanel>
+              </Button>
+            </StackPanel>
+
+            <Border Height="1" Background="#E4E4E7"/>
+
+            <!-- Group 4: Destructive Action -->
+            <Button Classes="DangerBtn" Click="OnDeleteSelectedClick" IsEnabled="{Binding HasSelection}">
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <Image Source="{svg:SvgImage avares://AnvViberManager/Assets/Icons/trash.svg}" Width="14" Height="14" IsHitTestVisible="False"/>
+                <TextBlock Text="Delete Selected" IsHitTestVisible="False"/>
+              </StackPanel>
+            </Button>
+          </StackPanel>
+
+          <!-- Bottom Section: Viber Path config (Moved to bottom of sidebar) -->
+          <StackPanel Grid.Row="1" Spacing="5" Margin="0,15,0,5">
+            <Border Height="1" Background="#E4E4E7" Margin="0,0,0,10"/>
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Grid.Column="0" Text="VIBER EXECUTABLE" FontSize="11" FontWeight="Bold" Foreground="#71717A"/>
+              <TextBlock Grid.Column="1" Text="✓" Foreground="#12B76A" FontSize="11" FontWeight="Bold" 
+                         IsVisible="{Binding ViberPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+              <TextBlock Grid.Column="1" Text="✗" Foreground="#D92D20" FontSize="11" FontWeight="Bold" 
+                         IsVisible="{Binding ViberPath, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+            </Grid>
+            <TextBox Text="{Binding ViberPath, Mode=TwoWay}" Watermark="Viber path..." Height="32" Background="#FFFFFF" 
+                     Foreground="#18181B" BorderBrush="#D4D4D8" BorderThickness="1" CornerRadius="4" 
+                     Padding="8,5" FontSize="12"/>
+            <Grid ColumnDefinitions="*,*">
+              <Button Grid.Column="0" Content="Browse" FontSize="11" Background="#E4E4E7" Foreground="#18181B" Height="28" Padding="5"
+                      Click="OnBrowseViberClick" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,0,2,0"/>
+              <Button Grid.Column="1" Content="Auto Find" FontSize="11" Background="#E4E4E7" Foreground="#18181B" Height="28" Padding="5"
+                      Click="OnAutoDetectViberClick" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="2,0,0,0"/>
+            </Grid>
+          </StackPanel>
+
+        </Grid>
+      </Border>
+
+      <!-- ── MAIN PANEL (RIGHT) ───────────────────────────────────────────── -->
+      <Grid Grid.Column="1" RowDefinitions="Auto,*" Margin="20">
+        
+        <!-- Filter Header Toolbar -->
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Height="42" Margin="0,0,0,10">
+          <TextBlock Grid.Column="0" Text="{Binding TitleText}" VerticalAlignment="Center" FontSize="14" FontWeight="SemiBold" Foreground="#18181B"/>
+          
+          <!-- Unified Search/Filter Card (Flat, light style) -->
+          <Border Grid.Column="1" Background="#FFFFFF" CornerRadius="4" BorderBrush="#E4E4E7" BorderThickness="1" Padding="2,0">
+            <StackPanel Orientation="Horizontal" Spacing="0" VerticalAlignment="Center">
+              <!-- Name Search -->
+              <TextBox Text="{Binding FilterName, Mode=TwoWay}" Watermark="Tìm theo tên..." Width="120" Background="Transparent" 
+                       Foreground="#18181B" BorderThickness="0" Padding="8,0" FontSize="11" Height="28" 
+                       VerticalAlignment="Center" VerticalContentAlignment="Center"/>
+              <Border Width="1" Height="16" Background="#E4E4E7" VerticalAlignment="Center"/>
+              
+              <!-- Phone Search -->
+              <TextBox Text="{Binding FilterPhone, Mode=TwoWay}" Watermark="Tìm theo SĐT..." Width="120" Background="Transparent" 
+                       Foreground="#18181B" BorderThickness="0" Padding="8,0" FontSize="11" Height="28" 
+                       VerticalAlignment="Center" VerticalContentAlignment="Center"/>
+              <Border Width="1" Height="16" Background="#E4E4E7" VerticalAlignment="Center"/>
+
+              <!-- Status Dropdown -->
+              <ComboBox SelectedItem="{Binding FilterStatus, Mode=TwoWay}" ItemsSource="{Binding StatusOptions}" Width="100" 
+                        Background="Transparent" Foreground="#18181B" BorderThickness="0" FontSize="11" Height="28" 
+                        VerticalAlignment="Center" VerticalContentAlignment="Center" Padding="8,0"/>
+              <Border Width="1" Height="16" Background="#E4E4E7" VerticalAlignment="Center"/>
+
+              <!-- Business Dropdown -->
+              <ComboBox SelectedItem="{Binding FilterBusiness, Mode=TwoWay}" ItemsSource="{Binding BusinessOptions}" Width="110" 
+                        Background="Transparent" Foreground="#18181B" BorderThickness="0" FontSize="11" Height="28" 
+                        VerticalAlignment="Center" VerticalContentAlignment="Center" Padding="8,0"/>
+              <Border Width="1" Height="16" Background="#E4E4E7" VerticalAlignment="Center"/>
+
+              <!-- Scanned Dropdown -->
+              <ComboBox SelectedItem="{Binding FilterScanned, Mode=TwoWay}" ItemsSource="{Binding ScannedOptions}" Width="110" 
+                        Background="Transparent" Foreground="#18181B" BorderThickness="0" FontSize="11" Height="28" 
+                        VerticalAlignment="Center" VerticalContentAlignment="Center" Padding="8,0"/>
+              <Border Width="1" Height="16" Background="#E4E4E7" VerticalAlignment="Center"/>
+
+              <!-- Reset Button -->
+              <Button Content="✕" Width="28" Height="28" Background="Transparent" Command="{Binding ClearFilterCommand}" 
+                      Foreground="#71717A" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" 
+                      BorderThickness="0" FontSize="11" VerticalAlignment="Center"/>
+            </StackPanel>
+          </Border>
+        </Grid>
+
+        <!-- Profiles Table List (DataGrid) (Flat style matching background) -->
+        <Border Grid.Row="1" Background="#FFFFFF" CornerRadius="4" BorderBrush="#E4E4E7" BorderThickness="1" ClipToBounds="True">
+          <DataGrid ItemsSource="{Binding Profiles}" AutoGenerateColumns="False" CanUserResizeColumns="True" 
+                    CanUserSortColumns="True" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#E4E4E7"
+                    LoadingRow="OnDataGridLoadingRow">
+            <DataGrid.Columns>
+              <!-- Checkbox Select All column header -->
+              <DataGridTemplateColumn Width="40">
+                <DataGridTemplateColumn.Header>
+                  <CheckBox HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0" Padding="0"
+                            IsChecked="{Binding $parent[Window].DataContext.IsAllSelected, Mode=TwoWay}"/>
+                </DataGridTemplateColumn.Header>
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate DataType="models:ViberProfile">
+                    <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0" Padding="0"/>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+
+              <!-- Index (Căn giữa) -->
+              <DataGridTemplateColumn Width="40">
+                <DataGridTemplateColumn.Header>
+                  <TextBlock Text="No" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </DataGridTemplateColumn.Header>
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate DataType="models:ViberProfile">
+                    <TextBlock Text="{Binding Index}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              
+              <!-- Profile Name -->
+              <DataGridTemplateColumn Width="110">
+                <DataGridTemplateColumn.Header>
+                  <TextBlock Text="Name" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                </DataGridTemplateColumn.Header>
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate DataType="models:ViberProfile">
+                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              
+              <!-- Phone (Căn giữa) -->
+              <DataGridTemplateColumn Width="120">
+                <DataGridTemplateColumn.Header>
+                  <TextBlock Text="Phone" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </DataGridTemplateColumn.Header>
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate DataType="models:ViberProfile">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                      <TextBlock Text="{Binding Phone}" VerticalAlignment="Center"/>
+                      <Button Background="Transparent" BorderThickness="0" Width="20" Height="20" Padding="0" Margin="4,0,0,0"
+                              Click="OnCopyPhoneClick" ToolTip.Tip="Copy Phone Number"
+                              IsVisible="{Binding Phone, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                        <Image Source="{svg:SvgImage avares://AnvViberManager/Assets/Icons/copy.svg}" Width="12" Height="12" IsHitTestVisible="False" Opacity="0.6"/>
+                      </Button>
+                    </StackPanel>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              
+              <!-- Status (Căn giữa) -->
+              <DataGridTemplateColumn Width="70">
+                <DataGridTemplateColumn.Header>
+                  <TextBlock Text="Status" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </DataGridTemplateColumn.Header>
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate DataType="models:ViberProfile">
+                    <TextBlock Text="{Binding Status}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+
+              <!-- Business (Căn giữa) -->
+              <DataGridTemplateColumn Width="70">
+                <DataGridTemplateColumn.Header>
+                  <TextBlock Text="Business" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </DataGridTemplateColumn.Header>
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate DataType="models:ViberProfile">
+                    <TextBlock Text="{Binding BusinessText}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+
+              <!-- Scanned (Căn giữa) -->
+              <DataGridTemplateColumn Width="75">
+                <DataGridTemplateColumn.Header>
+                  <TextBlock Text="Scanned" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </DataGridTemplateColumn.Header>
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate DataType="models:ViberProfile">
+                    <TextBlock Text="{Binding ScannedText}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              
+              <!-- Quick Actions (Căn giữa, tự kéo dãn lấp đầy khoảng trống dư thừa) -->
+              <DataGridTemplateColumn Width="*">
+                <DataGridTemplateColumn.Header>
+                  <TextBlock Text="Actions" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </DataGridTemplateColumn.Header>
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate DataType="models:ViberProfile">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="2">
+                      
+                      <!-- Button Run / Stop -->
+                      <Button Classes="ActionBtn" Click="OnLaunchRowClick" ToolTip.Tip="Launch or Stop Profile">
+                        <Grid IsHitTestVisible="False" HorizontalAlignment="Center" VerticalAlignment="Center">
+                          <!-- Play icon when Idle -->
+                          <Image Source="{svg:SvgImage avares://AnvViberManager/Assets/Icons/play-circle.svg}" Width="13" Height="13"
+                                 IsVisible="{Binding !IsRunning}"/>
+                          <!-- Stop icon when Running -->
+                          <Image Source="{svg:SvgImage avares://AnvViberManager/Assets/Icons/stop-square.svg}" Width="13" Height="13"
+                                 IsVisible="{Binding IsRunning}"/>
+                        </Grid>
+                      </Button>
+
+                      <!-- Button Rename -->
+                      <Button Classes="ActionBtn" Click="OnRenameRowClick" ToolTip.Tip="Rename Profile">
+                        <Image Source="{svg:SvgImage avares://AnvViberManager/Assets/Icons/edit.svg}" Width="13" Height="13" IsHitTestVisible="False"/>
+                      </Button>
+
+                      <!-- Button Delete -->
+                      <Button Classes="ActionBtn Danger" Click="OnDeleteRowClick" ToolTip.Tip="Delete Profile">
+                        <Image Source="{svg:SvgImage avares://AnvViberManager/Assets/Icons/trash.svg}" Width="13" Height="13" IsHitTestVisible="False"/>
+                      </Button>
+                      
+                    </StackPanel>
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+            </DataGrid.Columns>
+          </DataGrid>
+        </Border>
+
+      </Grid>
+    </Grid>
+
+    <!-- Bottom Status Bar -->
+    <Border Grid.Row="1" Background="#FAFAFC" BorderBrush="#E4E4E7" BorderThickness="0,1,0,0" Padding="16,6">
+      <Grid ColumnDefinitions="*,Auto">
+        <!-- Left: Status Message -->
+        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Spacing="6">
+          <Ellipse Width="6" Height="6" Fill="#7F56D9" VerticalAlignment="Center"/>
+          <TextBlock Text="{Binding StatusText}" FontSize="12" FontWeight="Medium" Foreground="#6941C6" VerticalAlignment="Center"/>
+        </StackPanel>
+
+        <!-- Right: Telegram Link & Version -->
+        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="10">
+          <!-- Telegram Button Link -->
+          <Button Background="Transparent" BorderThickness="0" Padding="0" Click="OnTelegramClick" ToolTip.Tip="Contact Telegram: @anv184">
+            <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+              <Image Source="{svg:SvgImage avares://AnvViberManager/Assets/Icons/telegram.svg}" Width="13" Height="13" IsHitTestVisible="False"/>
+              <TextBlock Text="anv184" FontSize="11" FontWeight="Medium" Foreground="#7F56D9" VerticalAlignment="Center"/>
+            </StackPanel>
+          </Button>
+
+          <!-- Divider -->
+          <Border Width="1" Height="12" Background="#D4D4D8" VerticalAlignment="Center"/>
+
+          <!-- Version Badge -->
+          <TextBlock Text="{Binding AppVersion}" FontSize="11" FontWeight="SemiBold" Foreground="#71717A" VerticalAlignment="Center"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

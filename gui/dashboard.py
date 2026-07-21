@@ -80,7 +80,7 @@ class Dashboard:
               foreground=[("readonly", TEXT_MAIN)])
 
         s.configure("Treeview", background=BG_CARD, foreground=TEXT_MAIN,
-                    fieldbackground=BG_CARD, rowheight=32, borderwidth=0,
+                    fieldbackground=BG_CARD, rowheight=38, borderwidth=0,
                     font=("Segoe UI", 9))
         s.configure("Treeview.Heading", background=BG_SIDEBAR, foreground=TEXT_MUTED,
                     font=("Segoe UI", 9, "bold"), borderwidth=0)
@@ -140,16 +140,66 @@ class Dashboard:
         actions_sec = tk.Frame(self.sidebar, bg=BG_SIDEBAR)
         actions_sec.pack(fill=tk.BOTH, expand=True, padx=20)
 
-        def add_side_btn(text, style, cmd, pady=4):
-            btn = ttk.Button(actions_sec, text=text, style=style, command=cmd)
-            btn.pack(fill=tk.X, pady=pady, ipady=6)
+        # Import helper to render SVG vector icons inside sidebar buttons
+        from utils.svg_canvas import SVGCanvas
 
-        add_side_btn("+ New Profile", "Primary.TButton", self._create_profile, pady=(0, 4))
-        add_side_btn("▶ Launch Selected", "Primary.TButton", self._launch_selected)
-        add_side_btn("⏹ Stop Selected", "Dark.TButton", self._stop_selected)
-        add_side_btn("📤 Export Profiles", "Dark.TButton", self._export_profile)
-        add_side_btn("📥 Import Profiles", "Dark.TButton", self._import_profile)
-        add_side_btn("🗑 Delete Selected", "Danger.TButton", self._delete_selected, pady=(15, 4))
+        def add_side_btn(text, style_name, cmd, icon_name, pady=4):
+            # Quyết định màu sắc nút dựa trên style
+            bg_color = BG_SIDEBAR
+            hover_color = BTN_DARK_HOVER
+            fg_color = TEXT_MAIN
+            
+            if style_name == "Primary.TButton":
+                bg_color = VIBER_PURPLE
+                hover_color = VIBER_HOVER
+            elif style_name == "Danger.TButton":
+                bg_color = STOP_RED
+                hover_color = STOP_HOVER
+            elif style_name == "Dark.TButton":
+                bg_color = BTN_DARK
+                hover_color = BTN_DARK_HOVER
+
+            # Tạo Frame giả lập nút bấm có bo viền/padding
+            btn_frame = tk.Frame(actions_sec, bg=bg_color, cursor="hand2")
+            btn_frame.pack(fill=tk.X, pady=pady)
+            
+            # Tính toán đường dẫn icon
+            icon_path = os.path.join(self.script_dir, "assets", "icons", icon_name)
+            
+            # Render SVG icon bên trái
+            icon_canvas = SVGCanvas(btn_frame, svg_path=icon_path, size=14, color=TEXT_MAIN, bg=bg_color)
+            icon_canvas.pack(side=tk.LEFT, padx=(12, 6), pady=6)
+            
+            # Nhãn chữ bên phải
+            lbl = tk.Label(btn_frame, text=text, font=("Segoe UI", 9, "bold"),
+                           bg=bg_color, fg=fg_color, cursor="hand2")
+            lbl.pack(side=tk.LEFT, fill=tk.Y, padx=(2, 10))
+
+            # Hiệu ứng hover đồng bộ
+            def on_enter(_):
+                btn_frame.config(bg=hover_color)
+                icon_canvas.config(bg=hover_color)
+                lbl.config(bg=hover_color)
+                
+            def on_leave(_):
+                btn_frame.config(bg=bg_color)
+                icon_canvas.config(bg=bg_color)
+                lbl.config(bg=bg_color)
+
+            def on_click(_):
+                cmd()
+
+            for widget in (btn_frame, icon_canvas, lbl):
+                widget.bind("<Enter>", on_enter)
+                widget.bind("<Leave>", on_leave)
+                widget.bind("<Button-1>", on_click)
+
+        add_side_btn("+ New Profile", "Primary.TButton", self._create_profile, "square-plus.svg", pady=(0, 4))
+        add_side_btn("▶ Launch Selected", "Primary.TButton", self._launch_selected, "play-circle.svg")
+        add_side_btn("⏹ Stop Selected", "Dark.TButton", self._stop_selected, "stop-square.svg")
+        add_side_btn("📤 Export Profiles", "Dark.TButton", self._export_profile, "file-export.svg")
+        add_side_btn("📥 Import Profiles", "Dark.TButton", self._import_profile, "multiple.svg")
+        add_side_btn("🗑 Delete Selected", "Danger.TButton", self._delete_selected, "trash.svg", pady=(15, 4))
 
         # Filter & Search Bar - Shrunk height for compact modern look
         filt_bar = tk.Frame(self.main_panel, bg=BG_MAIN, height=42)
@@ -206,13 +256,17 @@ class Dashboard:
         table_frame = tk.Frame(self.main_panel, bg=BG_MAIN)
         table_frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=(0, 10))
 
-        cols = ("#", "No", "Name", "Phone", "Status", "Actions")
+        # Đổi tên cột thứ nhất từ '#' thành kí tự checkbox '☐'
+        cols = ("☐", "No", "Name", "Phone", "Status", "Actions")
         self.tree = ttk.Treeview(table_frame, columns=cols, show="headings",
                                  selectmode="extended")
+        
         widths = [35, 45, 230, 140, 90, 180]
-        for col, w in zip(cols, widths):
-            self.tree.heading(col, text=col)
-            self.tree.column(col, width=w, minwidth=w, stretch=False)
+        alignments = [tk.CENTER, tk.CENTER, tk.W, tk.W, tk.W, tk.W]
+        
+        for col, w, align in zip(cols, widths, alignments):
+            self.tree.heading(col, text=col, anchor=align)
+            self.tree.column(col, width=w, minwidth=w, stretch=False, anchor=align)
 
         vsb = ttk.Scrollbar(table_frame, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=vsb.set)
@@ -523,8 +577,25 @@ class Dashboard:
 
     def _on_click(self, event):
         region = self.tree.identify_region(event.x, event.y)
+        
+        # Click vào tiêu đề cột Checkbox All để chọn tất cả / bỏ chọn tất cả
+        if region == "heading":
+            col = self.tree.identify_column(event.x)
+            if col == "#1":
+                children = self.tree.get_children()
+                selected = self.tree.selection()
+                # Nếu đã chọn hết tất cả dòng hiển thị -> bỏ chọn hết
+                if len(selected) == len(children):
+                    self.tree.selection_remove(*children)
+                else:
+                    self.tree.selection_add(*children)
+                self._update_sel_glyphs()
+                return "break"
+            return
+            
         if region != "cell":
             return
+            
         item = self.tree.identify_row(event.y)
         col  = self.tree.identify_column(event.x)
         vals = self.tree.item(item, "values")
@@ -569,12 +640,21 @@ class Dashboard:
         return "break"
 
     def _update_sel_glyphs(self):
+        children = self.tree.get_children()
         sel = set(self.tree.selection())
-        for item in self.tree.get_children():
+        
+        # Đổi hình hiển thị ở từng dòng: ☑ nếu được chọn, ☐ nếu không
+        for item in children:
             vals = list(self.tree.item(item, "values"))
             if vals:
-                vals[0] = "✓" if item in sel else ""
+                vals[0] = "☑" if item in sel else "☐"
                 self.tree.item(item, values=vals)
+                
+        # Đổi kí hiệu tiêu đề cột #1 tương ứng: ☑ nếu chọn tất cả, ☐ nếu không
+        if children and len(sel) == len(children):
+            self.tree.heading("#1", text="☑")
+        else:
+            self.tree.heading("#1", text="☐")
 
     # ──────────────────────────────────────── selection helpers ───────────────
 
