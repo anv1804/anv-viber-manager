@@ -160,48 +160,47 @@ class Dashboard:
         tk.Label(filt_bar, text="Profiles List", font=("Segoe UI", 12, "bold"),
                  bg=BG_MAIN, fg=TEXT_MAIN).pack(side=tk.LEFT, fill=tk.Y)
 
-        filt_controls = tk.Frame(filt_bar, bg=BG_MAIN)
-        filt_controls.pack(side=tk.RIGHT, fill=tk.Y)
+        # Filter Controls wrapped inside a single CARD container
+        self.search_card = tk.Frame(filt_bar, bg=BG_CARD, bd=0, highlightthickness=0)
+        self.search_card.pack(side=tk.RIGHT, fill=tk.Y)
 
         # Style configurations for aligned height
-        # Container widgets acting as wrappers with padding for Entry
         def create_entry_container(parent, placeholder, var):
-            # Cả container và entry đều set border = 0 và highlightthickness = 0 để dập tắt viền trắng của hệ điều hành
-            container = tk.Frame(parent, bg=BG_CARD, bd=0, highlightthickness=0)
-            container.pack(side=tk.LEFT, padx=6)
-            
-            entry = tk.Entry(container, bg=BG_CARD, fg=TEXT_MAIN,
+            entry = tk.Entry(parent, bg=BG_CARD, fg=TEXT_MAIN,
                              insertbackground=TEXT_MAIN, font=("Segoe UI", 10), 
                              bd=0, highlightthickness=0, width=16)
-            entry.pack(side=tk.LEFT, padx=10, pady=5, ipady=3) 
+            entry.pack(side=tk.LEFT, padx=12, pady=5, ipady=3) 
             self._setup_placeholder(entry, placeholder, var)
             return entry
 
         self._f_name = tk.StringVar()
-        self.entry_name = create_entry_container(filt_controls, "Tìm theo tên...", self._f_name)
+        self.entry_name = create_entry_container(self.search_card, "Tìm theo tên...", self._f_name)
+
+        # Vertical separator line inside the card
+        tk.Frame(self.search_card, bg=BORDER_COLOR, width=1).pack(side=tk.LEFT, fill=tk.Y, pady=6)
 
         self._f_phone = tk.StringVar()
-        self.entry_phone = create_entry_container(filt_controls, "Tìm theo SĐT...", self._f_phone)
+        self.entry_phone = create_entry_container(self.search_card, "Tìm theo SĐT...", self._f_phone)
+
+        # Vertical separator line inside the card
+        tk.Frame(self.search_card, bg=BORDER_COLOR, width=1).pack(side=tk.LEFT, fill=tk.Y, pady=6)
 
         # Status filter dropdown with custom padding
         self._f_status = tk.StringVar(value="All Status")
         
-        cb_container = tk.Frame(filt_controls, bg=BG_MAIN)
-        cb_container.pack(side=tk.LEFT, padx=6)
-        
-        # Style Combobox padding to match Entry exactly
-        cb = ttk.Combobox(cb_container, textvariable=self._f_status,
+        # Style Combobox inside the unified card
+        cb = ttk.Combobox(self.search_card, textvariable=self._f_status,
                           values=["All Status", "Running", "Idle"],
                           state="readonly", width=12, font=("Segoe UI", 10), style="TCombobox")
-        # Combobox pack padding matches Entry height
-        cb.pack(side=tk.LEFT, ipady=3) 
+        cb.pack(side=tk.LEFT, padx=8, ipady=3) 
         self._f_status.trace_add("write", lambda *_: self._apply_filter())
 
+        # Vertical separator line inside the card
+        tk.Frame(self.search_card, bg=BORDER_COLOR, width=1).pack(side=tk.LEFT, fill=tk.Y, pady=6)
+
         # Clear filter button matching the exact height
-        btn_container = tk.Frame(filt_controls, bg=BG_MAIN)
-        btn_container.pack(side=tk.LEFT, padx=6)
-        ttk.Button(btn_container, text="✕", style="Dark.TButton", command=self._clear_filter,
-                   width=3).pack(side=tk.LEFT, ipady=3)
+        ttk.Button(self.search_card, text="✕", style="Dark.TButton", command=self._clear_filter,
+                   width=3).pack(side=tk.LEFT, padx=(4, 6), ipady=3)
 
         # Profile Treeview Table
         table_frame = tk.Frame(self.main_panel, bg=BG_MAIN)
