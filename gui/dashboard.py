@@ -1,11 +1,5 @@
 """
-gui/dashboard.py — Main application window for ANV Viber Manager (Pure Local Version).
-
-Core responsibilities:
-  - Display and manage list of Viber profiles (local folders).
-  - Launch / stop individual Viber instances with isolated HOME + TMPDIR.
-  - CRUD: create, rename, delete profiles.
-  - Export / import profiles as .viberprofile archives.
+gui/dashboard.py — Main application window for ANV Viber Manager (Optimized Modern Sidebar UI).
 """
 import os
 import sys
@@ -21,7 +15,7 @@ from utils.profile import (
 from config import (
     BG_MAIN, BG_SIDEBAR, BG_CARD, TEXT_MAIN, TEXT_MUTED,
     VIBER_PURPLE, VIBER_HOVER, STOP_RED, STOP_HOVER,
-    BTN_DARK, BTN_DARK_HOVER,
+    BTN_DARK, BTN_DARK_HOVER, BORDER_COLOR,
 )
 
 
@@ -47,7 +41,7 @@ class Dashboard:
         self._all_profiles: list[dict] = []  # cache for filter
 
         self.root.title("ANV Viber Manager (Local)")
-        self.root.geometry("900x620")
+        self.root.geometry("980x640")
         self.root.configure(bg=BG_MAIN)
         self.root.resizable(False, False)
         self.root.protocol("WM_DELETE_WINDOW", self.root.destroy)
@@ -60,7 +54,7 @@ class Dashboard:
 
     def _center(self):
         self.root.update_idletasks()
-        w, h = 900, 620
+        w, h = 980, 640
         x = (self.root.winfo_screenwidth() - w) // 2
         y = (self.root.winfo_screenheight() - h) // 2
         self.root.geometry(f"{w}x{h}+{x}+{y}")
@@ -76,6 +70,7 @@ class Dashboard:
             s.configure(name, background=bg, foreground="white",
                         font=("Segoe UI", 9, "bold"), borderwidth=0, relief="flat")
             s.map(name, background=[("active", hover)])
+
         s.configure("Treeview", background=BG_CARD, foreground=TEXT_MAIN,
                     fieldbackground=BG_CARD, rowheight=32, borderwidth=0,
                     font=("Segoe UI", 9))
@@ -84,77 +79,115 @@ class Dashboard:
         s.map("Treeview", background=[("selected", "#2D2D3A")], foreground=[("selected", TEXT_MAIN)])
 
     def _build_ui(self):
-        # ── top bar ──────────────────────────────────────────────────────────
-        top = tk.Frame(self.root, bg=BG_SIDEBAR, height=56)
-        top.pack(fill=tk.X, side=tk.TOP)
-        top.pack_propagate(False)
+        # ── MAIN LAYOUT CONTAINERS ───────────────────────────────────────────
+        # Left Sidebar (260px width)
+        self.sidebar = tk.Frame(self.root, bg=BG_SIDEBAR, width=260)
+        self.sidebar.pack(side=tk.LEFT, fill=tk.Y)
+        self.sidebar.pack_propagate(False)
 
-        tk.Label(top, text="ANV VIBER MANAGER", font=("Segoe UI", 14, "bold"),
-                 bg=BG_SIDEBAR, fg=VIBER_PURPLE).pack(side=tk.LEFT, padx=20)
+        # Right Main Panel
+        self.main_panel = tk.Frame(self.root, bg=BG_MAIN)
+        self.main_panel.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        # ── viber path bar ────────────────────────────────────────────────────
-        path_bar = tk.Frame(self.root, bg=BG_SIDEBAR, height=38)
-        path_bar.pack(fill=tk.X)
-        path_bar.pack_propagate(False)
+        # ── SIDEBAR CONTENT ──────────────────────────────────────────────────
+        # Logo Header
+        logo_frame = tk.Frame(self.sidebar, bg=BG_SIDEBAR, height=60)
+        logo_frame.pack(fill=tk.X, pady=(20, 10))
+        logo_lbl = tk.Label(logo_frame, text="ANV VIBER", font=("Segoe UI", 16, "bold"),
+                            bg=BG_SIDEBAR, fg=VIBER_PURPLE)
+        logo_lbl.pack(anchor="w", padx=20)
 
-        self._lbl_path = tk.Label(path_bar, text="Viber Path",
-                                  font=("Segoe UI", 8), bg=BG_SIDEBAR, fg=TEXT_MUTED)
-        self._lbl_path.pack(side=tk.LEFT, padx=10)
+        # Divider line
+        tk.Frame(self.sidebar, bg=BORDER_COLOR, height=1).pack(fill=tk.X, padx=15, pady=(0, 15))
+
+        # Viber Path Section
+        path_sec = tk.Frame(self.sidebar, bg=BG_SIDEBAR)
+        path_sec.pack(fill=tk.X, padx=20, pady=(0, 20))
+        
+        path_title_frame = tk.Frame(path_sec, bg=BG_SIDEBAR)
+        path_title_frame.pack(fill=tk.X)
+        tk.Label(path_title_frame, text="VIBER EXECUTABLE", font=("Segoe UI", 8, "bold"),
+                 bg=BG_SIDEBAR, fg=TEXT_MUTED).pack(side=tk.LEFT)
+        self._lbl_path = tk.Label(path_title_frame, text="✗", font=("Segoe UI", 8, "bold"),
+                                  bg=BG_SIDEBAR, fg=STOP_RED)
+        self._lbl_path.pack(side=tk.LEFT, padx=5)
 
         self._path_var = tk.StringVar(value=self.viber_path or "")
         self._path_var.trace_add("write", self._on_path_change)
-        path_entry = tk.Entry(path_bar, textvariable=self._path_var, bg=BG_MAIN,
+        path_entry = tk.Entry(path_sec, textvariable=self._path_var, bg=BG_MAIN,
                               fg=TEXT_MAIN, insertbackground=TEXT_MAIN,
-                              font=("Segoe UI", 9), bd=0, relief=tk.FLAT, width=48)
-        path_entry.pack(side=tk.LEFT, padx=6, ipady=3)
+                              font=("Segoe UI", 9), bd=0, relief=tk.FLAT)
+        path_entry.pack(fill=tk.X, pady=(5, 6), ipady=4, padx=5) # padding internal
 
-        ttk.Button(path_bar, text="Browse", style="Dark.TButton",
-                   command=self._browse_viber).pack(side=tk.LEFT, padx=4)
-        ttk.Button(path_bar, text="Auto-Detect", style="Dark.TButton",
-                   command=self._auto_detect).pack(side=tk.LEFT, padx=4)
-        self._update_path_label()
+        path_btn_frame = tk.Frame(path_sec, bg=BG_SIDEBAR)
+        path_btn_frame.pack(fill=tk.X)
+        ttk.Button(path_btn_frame, text="Browse", style="Dark.TButton",
+                   command=self._browse_viber).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 3))
+        ttk.Button(path_btn_frame, text="Auto Detect", style="Dark.TButton",
+                   command=self._auto_detect).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(3, 0))
 
-        # ── action toolbar ────────────────────────────────────────────────────
-        toolbar = tk.Frame(self.root, bg=BG_MAIN, pady=8)
-        toolbar.pack(fill=tk.X, padx=12)
+        tk.Frame(self.sidebar, bg=BORDER_COLOR, height=1).pack(fill=tk.X, padx=15, pady=(0, 15))
 
-        def tb(text, style, cmd, **kw):
-            b = ttk.Button(toolbar, text=text, style=style, command=cmd, **kw)
-            b.pack(side=tk.LEFT, padx=3, ipady=4)
-            return b
+        # Core Action Buttons
+        actions_sec = tk.Frame(self.sidebar, bg=BG_SIDEBAR)
+        actions_sec.pack(fill=tk.BOTH, expand=True, padx=20)
 
-        tb("+ New",    "Primary.TButton", self._create_profile)
-        tb("▶ Launch", "Primary.TButton", self._launch_selected)
-        tb("⏹ Stop",   "Dark.TButton",    self._stop_selected)
-        tb("🗑 Delete", "Danger.TButton",  self._delete_selected)
-        tb("📤 Export", "Dark.TButton",    self._export_profile)
-        tb("📥 Import", "Dark.TButton",    self._import_profile)
+        def add_side_btn(text, style, cmd, pady=4):
+            btn = ttk.Button(actions_sec, text=text, style=style, command=cmd)
+            btn.pack(fill=tk.X, pady=pady, ipady=6)
 
-        # filters
-        filt = tk.Frame(toolbar, bg=BG_MAIN)
-        filt.pack(side=tk.RIGHT)
-        self._f_name  = tk.StringVar()
+        add_side_btn("+ New Profile", "Primary.TButton", self._create_profile, pady=(0, 4))
+        add_side_btn("▶ Launch Selected", "Primary.TButton", self._launch_selected)
+        add_side_btn("⏹ Stop Selected", "Dark.TButton", self._stop_selected)
+        add_side_btn("📤 Export Profiles", "Dark.TButton", self._export_profile)
+        add_side_btn("📥 Import Profiles", "Dark.TButton", self._import_profile)
+        add_side_btn("🗑 Delete Selected", "Danger.TButton", self._delete_selected, pady=(15, 4))
+
+        # ── MAIN CONTENT PANEL ───────────────────────────────────────────────
+        # Filter & Search Bar
+        filt_bar = tk.Frame(self.main_panel, bg=BG_MAIN, height=60)
+        filt_bar.pack(fill=tk.X, side=tk.TOP, padx=15, pady=(15, 10))
+        filt_bar.pack_propagate(False)
+
+        tk.Label(filt_bar, text="Profiles List", font=("Segoe UI", 12, "bold"),
+                 bg=BG_MAIN, fg=TEXT_MAIN).pack(side=tk.LEFT)
+
+        filt_controls = tk.Frame(filt_bar, bg=BG_MAIN)
+        filt_controls.pack(side=tk.RIGHT, fill=tk.Y)
+
+        # Name filter with Placeholder
+        self._f_name = tk.StringVar()
+        self.entry_name = tk.Entry(filt_controls, bg=BG_CARD, fg=TEXT_MAIN,
+                                   insertbackground=TEXT_MAIN, font=("Segoe UI", 9), bd=0, width=16)
+        self.entry_name.pack(side=tk.LEFT, padx=4, ipady=4)
+        self._setup_placeholder(self.entry_name, "Tìm theo tên...", self._f_name)
+
+        # Phone filter with Placeholder
         self._f_phone = tk.StringVar()
-        self._f_status = tk.StringVar(value="All")
-        for var, ph in [(self._f_name, "Name…"), (self._f_phone, "Phone…")]:
-            e = tk.Entry(filt, textvariable=var, bg=BG_CARD, fg=TEXT_MAIN,
-                         insertbackground=TEXT_MAIN, font=("Segoe UI", 9), bd=0, width=12)
-            e.pack(side=tk.LEFT, padx=3, ipady=3)
-            var.trace_add("write", lambda *_: self._apply_filter())
-        ttk.Combobox(filt, textvariable=self._f_status, values=["All", "Running", "Idle"],
-                     state="readonly", width=8, font=("Segoe UI", 9)).pack(side=tk.LEFT, padx=3)
-        self._f_status.trace_add("write", lambda *_: self._apply_filter())
-        ttk.Button(filt, text="✕", style="Dark.TButton", command=self._clear_filter,
-                   width=2).pack(side=tk.LEFT, padx=2)
+        self.entry_phone = tk.Entry(filt_controls, bg=BG_CARD, fg=TEXT_MAIN,
+                                    insertbackground=TEXT_MAIN, font=("Segoe UI", 9), bd=0, width=16)
+        self.entry_phone.pack(side=tk.LEFT, padx=4, ipady=4)
+        self._setup_placeholder(self.entry_phone, "Tìm theo SĐT...", self._f_phone)
 
-        # ── profile table ─────────────────────────────────────────────────────
-        table_frame = tk.Frame(self.root, bg=BG_MAIN)
-        table_frame.pack(fill=tk.BOTH, expand=True, padx=12, pady=(0, 12))
+        # Status filter dropdown
+        self._f_status = tk.StringVar(value="All Status")
+        cb = ttk.Combobox(filt_controls, textvariable=self._f_status,
+                          values=["All Status", "Running", "Idle"],
+                          state="readonly", width=10, font=("Segoe UI", 9))
+        cb.pack(side=tk.LEFT, padx=4)
+        self._f_status.trace_add("write", lambda *_: self._apply_filter())
+
+        ttk.Button(filt_controls, text="✕", style="Dark.TButton", command=self._clear_filter,
+                   width=3).pack(side=tk.LEFT, padx=4, ipady=3)
+
+        # Profile Treeview Table
+        table_frame = tk.Frame(self.main_panel, bg=BG_MAIN)
+        table_frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=(0, 10))
 
         cols = ("#", "No", "Name", "Phone", "Status", "Actions")
         self.tree = ttk.Treeview(table_frame, columns=cols, show="headings",
                                  selectmode="extended")
-        widths = [44, 44, 200, 140, 80, 200]
+        widths = [35, 45, 230, 140, 90, 180]
         for col, w in zip(cols, widths):
             self.tree.heading(col, text=col)
             self.tree.column(col, width=w, minwidth=w, stretch=False)
@@ -166,10 +199,40 @@ class Dashboard:
 
         self.tree.bind("<Button-1>", self._on_click)
 
-        # ── status bar ────────────────────────────────────────────────────────
+        # Bottom Status Bar
         self._status_bar = tk.Label(self.root, text="Ready", font=("Segoe UI", 8),
-                                    bg=BG_SIDEBAR, fg=TEXT_MUTED, anchor="w")
+                                    bg=BG_SIDEBAR, fg=TEXT_MUTED, anchor="w", padx=15, height=2)
         self._status_bar.pack(fill=tk.X, side=tk.BOTTOM)
+
+        self._update_path_label()
+
+    # ──────────────────────────────────────── placeholder helper ──────────────
+
+    def _setup_placeholder(self, entry: tk.Entry, placeholder: str, var: tk.StringVar):
+        entry.insert(0, placeholder)
+        entry.config(fg=TEXT_MUTED)
+
+        def on_focus_in(*_):
+            if entry.get() == placeholder:
+                entry.delete(0, tk.END)
+                entry.config(fg=TEXT_MAIN)
+
+        def on_focus_out(*_):
+            if not entry.get():
+                entry.insert(0, placeholder)
+                entry.config(fg=TEXT_MUTED)
+
+        def on_change(*_):
+            val = entry.get()
+            if val == placeholder or not val:
+                var.set("")
+            else:
+                var.set(val)
+            self._apply_filter()
+
+        entry.bind("<FocusIn>", on_focus_in)
+        entry.bind("<FocusOut>", on_focus_out)
+        entry.bind("<KeyRelease>", on_change)
 
     # ──────────────────────────────────────── profile loading ─────────────────
 
@@ -202,7 +265,7 @@ class Dashboard:
                 continue
             if fp and fp not in p["phone"]:
                 continue
-            if fs != "All" and p["status"] != fs:
+            if fs != "All Status" and p["status"] != fs:
                 continue
             sel_glyph = "✓" if p["name"] in sel_names else ""
             running = p["name"] in self.running
@@ -215,9 +278,21 @@ class Dashboard:
         self._update_sel_glyphs()
 
     def _clear_filter(self):
+        # Reset name entry
+        self.entry_name.delete(0, tk.END)
+        self.entry_name.insert(0, "Tìm theo tên...")
+        self.entry_name.config(fg=TEXT_MUTED)
         self._f_name.set("")
+
+        # Reset phone entry
+        self.entry_phone.delete(0, tk.END)
+        self.entry_phone.insert(0, "Tìm theo SĐT...")
+        self.entry_phone.config(fg=TEXT_MUTED)
         self._f_phone.set("")
-        self._f_status.set("All")
+
+        # Reset combobox
+        self._f_status.set("All Status")
+        self._apply_filter()
 
     # ──────────────────────────────────────── process tracking ────────────────
 
@@ -493,9 +568,9 @@ class Dashboard:
 
     def _update_path_label(self):
         if self.viber_path:
-            self._lbl_path.config(text="Viber Path ✓", fg="#12B76A")
+            self._lbl_path.config(text="✓", fg="#12B76A")
         else:
-            self._lbl_path.config(text="Viber Path ✗", fg=STOP_RED)
+            self._lbl_path.config(text="✗", fg=STOP_RED)
 
     def _browse_viber(self):
         ft = [("Executables", "*.exe")] if sys.platform.startswith("win") else [("All", "*")]
