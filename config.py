@@ -1,12 +1,4 @@
 # ==========================================
-# CONFIGURATION FOR ADMIN (EDIT BEFORE BUILD)
-# ==========================================
-SUPABASE_URL = "https://hqbsupczeujqgrkvrdjx.supabase.co"
-SUPABASE_KEY = "sb_publishable_249FmOz7LjCvA6-dAlTHkg_mngyhFt9"
-TELEGRAM_BOT_TOKEN = "8590170680:AAFZqP6KDe1nc0GjLJQEU1ghePCKzcpvUq4"
-TELEGRAM_CHAT_ID = "7962221453"
-
-# ==========================================
 # PREMIUM THEME — ANV Viber Dark Style
 # ==========================================
 BG_MAIN        = "#0B0B0C"   # Deep rich dark background

@@ -1,41 +1,29 @@
 """
-gui/dashboard.py — Main application window after login.
+gui/dashboard.py — Main application window for ANV Viber Manager (Pure Local Version).
 
 Core responsibilities:
   - Display and manage list of Viber profiles (local folders).
   - Launch / stop individual Viber instances with isolated HOME + TMPDIR.
   - CRUD: create, rename, delete profiles.
   - Export / import profiles as .viberprofile archives.
-  - Sync All: upload from source machine → Telegram → download on this machine.
-  - Background loop: sync profile list to Supabase + process remote commands.
 """
 import os
 import sys
 import shutil
 import subprocess
-import threading
-import time
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
-from datetime import datetime, timezone
 
-import services.supabase as db
-import services.telegram as tg
 from utils.profile import (
     detect_viber_path, get_profile_phone, get_viber_pc_dir,
     pack_profile_to_zip, unpack_profile_zip,
 )
-from utils.crypto import get_profile_key, encrypt_file, decrypt_file
 from config import (
     BG_MAIN, BG_SIDEBAR, BG_CARD, TEXT_MAIN, TEXT_MUTED,
     VIBER_PURPLE, VIBER_HOVER, STOP_RED, STOP_HOVER,
-    BTN_DARK, BTN_DARK_HOVER, BORDER_COLOR, SUPABASE_URL,
+    BTN_DARK, BTN_DARK_HOVER,
 )
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Helpers
-# ─────────────────────────────────────────────────────────────────────────────
 
 def _safe_name(s: str) -> str:
     return "".join(c for c in s if c.isalnum() or c in "-_ ").strip()
@@ -47,30 +35,18 @@ def _script_dir() -> str:
     return os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Dashboard
-# ─────────────────────────────────────────────────────────────────────────────
-
 class Dashboard:
-    SYNC_INTERVAL = 15  # seconds between background syncs
-
-    def __init__(self, root: tk.Tk, user_id: str, username: str,
-                 expires_info: str, role: str = "user"):
+    def __init__(self, root: tk.Tk):
         self.root = root
-        self.user_id = user_id
-        self.username = username
-        self.expires_info = expires_info
-        self.role = role
-
         self.script_dir = _script_dir()
-        self.profiles_dir = os.path.join(self.script_dir, "viber_profiles", username)
+        self.profiles_dir = os.path.join(self.script_dir, "viber_profiles")
         os.makedirs(self.profiles_dir, exist_ok=True)
 
         self.viber_path: str | None = detect_viber_path()
         self.running: dict[str, bool] = {}   # profile_name → True if running
         self._all_profiles: list[dict] = []  # cache for filter
 
-        self.root.title("ANV Viber Manager")
+        self.root.title("ANV Viber Manager (Local)")
         self.root.geometry("900x620")
         self.root.configure(bg=BG_MAIN)
         self.root.resizable(False, False)
@@ -81,9 +57,6 @@ class Dashboard:
         self._build_ui()
         self._load_profiles()
         self._poll_running(first=True)
-        self._start_bg_loop()
-
-    # ──────────────────────────────────────── layout ──────────────────────────
 
     def _center(self):
         self.root.update_idletasks()
@@ -116,18 +89,8 @@ class Dashboard:
         top.pack(fill=tk.X, side=tk.TOP)
         top.pack_propagate(False)
 
-        tk.Label(top, text="ANV VIBER", font=("Segoe UI", 14, "bold"),
+        tk.Label(top, text="ANV VIBER MANAGER", font=("Segoe UI", 14, "bold"),
                  bg=BG_SIDEBAR, fg=VIBER_PURPLE).pack(side=tk.LEFT, padx=20)
-
-        right_info = tk.Frame(top, bg=BG_SIDEBAR)
-        right_info.pack(side=tk.RIGHT, padx=20)
-        tk.Label(right_info, text=f"👤 {self.username}  |  🗓 {self.expires_info}",
-                 font=("Segoe UI", 9), bg=BG_SIDEBAR, fg=TEXT_MUTED).pack(side=tk.LEFT, padx=(0, 10))
-        if self.role == "admin":
-            ttk.Button(right_info, text="Admin", style="Dark.TButton",
-                       command=self._open_admin).pack(side=tk.LEFT, padx=4)
-        ttk.Button(right_info, text="Sign Out", style="Danger.TButton",
-                   command=self._logout).pack(side=tk.LEFT, padx=4)
 
         # ── viber path bar ────────────────────────────────────────────────────
         path_bar = tk.Frame(self.root, bg=BG_SIDEBAR, height=38)
@@ -166,7 +129,6 @@ class Dashboard:
         tb("🗑 Delete", "Danger.TButton",  self._delete_selected)
         tb("📤 Export", "Dark.TButton",    self._export_profile)
         tb("📥 Import", "Dark.TButton",    self._import_profile)
-        tb("☁ Sync All","Primary.TButton", self._sync_all)
 
         # filters
         filt = tk.Frame(toolbar, bg=BG_MAIN)
@@ -203,7 +165,6 @@ class Dashboard:
         vsb.pack(side=tk.RIGHT, fill=tk.Y)
 
         self.tree.bind("<Button-1>", self._on_click)
-        self.tree.bind("<<TreeviewSelect>>", lambda _: self._refresh_btn_states())
 
         # ── status bar ────────────────────────────────────────────────────────
         self._status_bar = tk.Label(self.root, text="Ready", font=("Segoe UI", 8),
@@ -251,15 +212,12 @@ class Dashboard:
             if p["name"] in sel_names:
                 self.tree.selection_add(iid)
             idx += 1
-        self._refresh_btn_states()
+        self._update_sel_glyphs()
 
     def _clear_filter(self):
         self._f_name.set("")
         self._f_phone.set("")
         self._f_status.set("All")
-
-    def _refresh_btn_states(self):
-        pass  # buttons always enabled; actions check selection internally
 
     # ──────────────────────────────────────── process tracking ────────────────
 
@@ -368,7 +326,6 @@ class Dashboard:
             return messagebox.showerror("Error", "Profile already exists.")
         os.makedirs(os.path.join(dest, "data", "Home"), exist_ok=True)
         self._load_profiles()
-        self._bg_sync_list()
 
     def _delete_selected(self):
         names = self._selected_names()
@@ -389,7 +346,6 @@ class Dashboard:
                                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             shutil.rmtree(profile_dir, ignore_errors=True)
         self._load_profiles()
-        self._bg_sync_list()
 
     def _rename_profile(self, old_name: str):
         self._dialog("Rename Profile", f"Rename '{old_name}' to:", old_name,
@@ -405,7 +361,6 @@ class Dashboard:
         self._stop_one(old)
         shutil.move(os.path.join(self.profiles_dir, old), dest)
         self._load_profiles()
-        self._bg_sync_list()
 
     # ──────────────────────────────────────── export / import ─────────────────
 
@@ -463,220 +418,6 @@ class Dashboard:
         if ok:
             messagebox.showinfo("Imported", f"Imported {ok} profile(s).")
 
-    # ──────────────────────────────────────── sync all ────────────────────────
-
-    def _sync_all(self):
-        if not SUPABASE_URL or SUPABASE_URL == "https://your-project.supabase.co":
-            return messagebox.showwarning("Unavailable", "Requires Supabase configuration.")
-
-        headers = db.make_headers()
-        remote = db.get_client_profiles(self.user_id, headers)
-        if not remote:
-            return messagebox.showinfo("Nothing to Sync", "No profiles in database.")
-
-        names = [r["profile_name"] for r in remote]
-        if not messagebox.askyesno("Confirm Sync", f"Sync {len(names)} profile(s) from cloud?"):
-            return
-
-        total = len(names)
-        win = self._progress_window("Syncing Profiles", total)
-        lbl_main, lbl_detail, bar, lbl_cnt = win
-
-        def worker():
-            # First handle any pending DOWNLOAD commands
-            try:
-                for cmd in db.get_pending_commands(self.user_id, headers):
-                    if cmd.get("command") == "DOWNLOAD_PROFILE":
-                        if lbl_detail.winfo_exists():
-                            lbl_detail.config(text=f"Importing pushed: {cmd.get('profile_name')}")
-                        self._process_remote_command(cmd, headers)
-            except Exception:
-                pass
-
-            ok, failed = 0, []
-            for idx, name in enumerate(names):
-                try:
-                    if lbl_main.winfo_exists():
-                        lbl_main.config(text=f"Syncing: {name}")
-                    # Request upload from source machine
-                    db.post_command({
-                        "user_id": self.user_id, "command": "UPLOAD_PROFILE",
-                        "profile_name": name, "status": "pending"
-                    }, headers)
-                    cmd = db.get_latest_command(self.user_id, name, "UPLOAD_PROFILE", headers)
-                    if not cmd:
-                        raise RuntimeError("Command not registered.")
-                    cmd_id = cmd["id"]
-
-                    # Poll up to 90 s
-                    file_id = None
-                    deadline = time.time() + 90
-                    while time.time() < deadline:
-                        time.sleep(2)
-                        rec = db.poll_command(cmd_id, headers)
-                        if rec:
-                            if rec.get("status") == "completed":
-                                file_id = rec.get("telegram_file_id"); break
-                            if rec.get("status") == "failed":
-                                raise RuntimeError("Upload failed on source.")
-                    if not file_id:
-                        raise TimeoutError("Upload timed out (90 s).")
-
-                    # Download and decrypt
-                    actual_id = file_id.split("|", 1)[0] if "|" in file_id else file_id
-                    zip_path = os.path.join(self.script_dir, f"{name}_sync.zip")
-                    if lbl_detail.winfo_exists():
-                        lbl_detail.config(text="Downloading…")
-                    tg.download_file(actual_id, zip_path)
-                    key = get_profile_key(self.user_id, name)
-                    decrypt_file(zip_path, key)
-                    dest = os.path.join(self.profiles_dir, name)
-                    self._stop_one(name)
-                    unpack_profile_zip(zip_path, dest)
-                    os.remove(zip_path)
-                    db.delete_command(cmd_id, headers)
-                    ok += 1
-                except Exception as e:
-                    failed.append(f"{name}: {e}")
-                finally:
-                    if bar.winfo_exists():
-                        bar["value"] = idx + 1
-                        lbl_cnt.config(text=f"{idx + 1} / {total}")
-
-            if lbl_main.winfo_exists():
-                lbl_main.winfo_toplevel().destroy()
-            self.root.after(0, self._load_profiles)
-            self._bg_sync_list()
-            if failed:
-                messagebox.showwarning("Done with errors",
-                                       f"✅ {ok}/{total}\n\n❌ Failed:\n" + "\n".join(failed))
-            else:
-                messagebox.showinfo("Sync Complete", f"✅ {ok}/{total} profiles synced!")
-
-        threading.Thread(target=worker, daemon=True).start()
-
-    # ──────────────────────────────────────── background loop ─────────────────
-
-    def _start_bg_loop(self):
-        if not SUPABASE_URL or SUPABASE_URL == "https://your-project.supabase.co":
-            return
-
-        def worker():
-            headers = db.make_headers()
-            while True:
-                try:
-                    for cmd in db.get_pending_commands(self.user_id, headers):
-                        self._process_remote_command(cmd, headers)
-                    self._bg_sync_list(headers=headers)
-                except Exception:
-                    pass
-                time.sleep(self.SYNC_INTERVAL)
-
-        threading.Thread(target=worker, daemon=True).start()
-
-    def _bg_sync_list(self, headers=None):
-        """Push current profile list to Supabase (metadata only, no files)."""
-        def _run():
-            h = headers or db.make_headers()
-            profiles = []
-            if os.path.exists(self.profiles_dir):
-                for name in os.listdir(self.profiles_dir):
-                    if not os.path.isdir(os.path.join(self.profiles_dir, name)):
-                        continue
-                    profiles.append({
-                        "user_id":      self.user_id,
-                        "profile_name": name,
-                        "phone_number": get_profile_phone(self.profiles_dir, name),
-                        "status":       "running" if name in self.running else "idle",
-                        "updated_at":   datetime.utcnow().isoformat() + "Z",
-                    })
-            db.sync_profiles(profiles, self.user_id, h)
-        threading.Thread(target=_run, daemon=True).start()
-
-    def _process_remote_command(self, cmd: dict, headers: dict):
-        """Execute a remote command (UPLOAD or DOWNLOAD)."""
-        cmd_id   = cmd["id"]
-        cmd_type = cmd["command"]
-        name     = cmd["profile_name"]
-
-        db.update_command_status(cmd_id, "processing", headers)
-        try:
-            if cmd_type == "UPLOAD_PROFILE":
-                profile_path = os.path.join(self.profiles_dir, name)
-                if not os.path.exists(profile_path):
-                    db.update_command_status(cmd_id, "pending", headers)
-                    return  # Let another machine handle it
-
-                viber_pc = get_viber_pc_dir(profile_path)
-                if not viber_pc or not os.path.exists(viber_pc) or not os.listdir(viber_pc):
-                    # Create a minimal placeholder so pack doesn't crash
-                    viber_pc = os.path.join(profile_path, "data", "Home", ".ViberPC")
-                    os.makedirs(viber_pc, exist_ok=True)
-                    with open(os.path.join(viber_pc, "viber.db"), "w") as f:
-                        f.write("PLACEHOLDER")
-
-                # Delete old Telegram message if we can find it
-                old_msg_id = self._get_old_msg_id(name, headers)
-
-                zip_path = os.path.join(self.script_dir, f"{name}_upload.zip")
-                pack_profile_to_zip(viber_pc, zip_path)
-                key = get_profile_key(self.user_id, name)
-                encrypt_file(zip_path, key)
-                file_id, msg_id = tg.upload_file(
-                    zip_path, caption=f"Backup: {name}",
-                    filename=f"{name}.viberprofile")
-                os.remove(zip_path)
-
-                composite = f"{file_id}|{msg_id}"
-                db.update_profile_file_id(self.user_id, name, composite, headers)
-                db.update_command_status(cmd_id, "completed", headers,
-                                         telegram_file_id=composite)
-                if old_msg_id:
-                    threading.Thread(target=lambda: tg.delete_message(old_msg_id),
-                                     daemon=True).start()
-
-            elif cmd_type == "DOWNLOAD_PROFILE":
-                fid_payload = cmd.get("telegram_file_id") or ""
-                if not fid_payload:
-                    raise ValueError("Missing file_id.")
-                actual_id, orig_name = (fid_payload.split("|", 1)
-                                        if "|" in fid_payload else (fid_payload, name))
-                dest_name = name
-                dest_path = os.path.join(self.profiles_dir, dest_name)
-                n = 1
-                while os.path.exists(dest_path):
-                    dest_name = f"{name} ({n})"
-                    dest_path = os.path.join(self.profiles_dir, dest_name)
-                    n += 1
-
-                zip_path = os.path.join(self.script_dir, f"{dest_name}_down.zip")
-                tg.download_file(actual_id, zip_path)
-                key = get_profile_key(self.user_id, orig_name)
-                decrypt_file(zip_path, key)
-                self._stop_one(dest_name)
-                unpack_profile_zip(zip_path, dest_path)
-                os.remove(zip_path)
-                db.update_command_status(cmd_id, "completed", headers)
-                self.root.after(0, self._load_profiles)
-                self._bg_sync_list(headers=headers)
-
-        except Exception as e:
-            import traceback; traceback.print_exc()
-            db.update_command_status(cmd_id, "failed", headers)
-
-    def _get_old_msg_id(self, name: str, headers: dict) -> int | None:
-        try:
-            for p in db.get_client_profiles(self.user_id, headers):
-                if p["profile_name"] == name:
-                    val = p.get("telegram_file_id", "")
-                    if val and "|" in val:
-                        _, mid = val.split("|", 1)
-                        if mid.isdigit():
-                            return int(mid)
-        except Exception:
-            pass
-        return None
-
     # ──────────────────────────────────────── table interaction ───────────────
 
     def _on_click(self, event):
@@ -712,7 +453,6 @@ class Dashboard:
                     sel = self._selected_names()
                     if name not in sel:
                         sel = [name]
-                    orig = self._selected_names()
                     # temporary override
                     self._selected_names_override = [name]
                     self._delete_selected()
@@ -771,16 +511,6 @@ class Dashboard:
         else:
             messagebox.showwarning("Not Found", "Could not auto-locate Viber.")
 
-    # ──────────────────────────────────────── admin / logout ──────────────────
-
-    def _open_admin(self):
-        from gui.admin import AdminPanel
-        AdminPanel(self.root)
-
-    def _logout(self):
-        if messagebox.askyesno("Sign Out", "Sign out?"):
-            self.root.destroy()
-
     # ──────────────────────────────────────── ui utils ────────────────────────
 
     def _set_status(self, msg: str, ms: int = 2500):
@@ -813,24 +543,3 @@ class Dashboard:
         d.bind("<Return>", lambda _: confirm())
         ttk.Button(d, text="OK", style="Primary.TButton", command=confirm).pack(
             pady=10, ipady=3, padx=30, fill=tk.X)
-
-    def _progress_window(self, title: str, total: int):
-        w = tk.Toplevel(self.root)
-        w.title(title)
-        w.geometry("440x200")
-        w.configure(bg=BG_SIDEBAR)
-        w.resizable(False, False)
-        w.transient(self.root)
-        w.wait_visibility()
-        w.grab_set()
-        lbl_main = tk.Label(w, text="Initializing…", font=("Segoe UI", 10, "bold"),
-                            bg=BG_SIDEBAR, fg=TEXT_MAIN)
-        lbl_main.pack(pady=(20, 4))
-        lbl_detail = tk.Label(w, text="", font=("Segoe UI", 9), bg=BG_SIDEBAR, fg=TEXT_MUTED)
-        lbl_detail.pack(pady=(0, 8))
-        bar = ttk.Progressbar(w, mode="determinate", length=360, maximum=total)
-        bar.pack(pady=4)
-        lbl_cnt = tk.Label(w, text=f"0 / {total}", font=("Segoe UI", 9),
-                           bg=BG_SIDEBAR, fg=TEXT_MUTED)
-        lbl_cnt.pack(pady=4)
-        return lbl_main, lbl_detail, bar, lbl_cnt
