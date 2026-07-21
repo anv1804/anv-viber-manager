@@ -13,16 +13,20 @@ namespace AnvViberManager.ViewModels
 {
     public partial class MainWindowViewModel : ViewModelBase
     {
-        private readonly string _profilesDir;
+        private string _profilesDir;
 
         [ObservableProperty]
         private string? _viberPath;
+
+        [ObservableProperty]
+        private string _customProfilesDir = string.Empty;
 
         [ObservableProperty]
         private string _statusText = "Ready";
 
         [ObservableProperty]
         private string _titleText = "Profiles List (0)";
+
 
         // Filters
         [ObservableProperty]
@@ -77,31 +81,95 @@ namespace AnvViberManager.ViewModels
         public ICommand AutoDetectViberCommand { get; }
         public ICommand ToggleSelectAllCommand { get; }
         public ICommand ClearFilterCommand { get; }
+        public ICommand BrowseProfilesDirCommand { get; }
 
         public ICommand LaunchProfileCommand { get; }
         public ICommand RenameProfileCommand { get; }
         public ICommand DeleteProfileCommand { get; }
 
+        private class AppSettings
+        {
+            public string ViberPath { get; set; } = string.Empty;
+            public string CustomProfilesDir { get; set; } = string.Empty;
+        }
+
+        private static string SettingsFilePath => Path.Combine(AppContext.BaseDirectory, "settings.json");
+
+        private void LoadSettings()
+        {
+            try
+            {
+                if (File.Exists(SettingsFilePath))
+                {
+                    var json = File.ReadAllText(SettingsFilePath);
+                    var settings = System.Text.Json.JsonSerializer.Deserialize<AppSettings>(json);
+                    if (settings != null)
+                    {
+                        ViberPath = settings.ViberPath;
+                        CustomProfilesDir = settings.CustomProfilesDir;
+                    }
+                }
+            }
+            catch { }
+        }
+
+        private void SaveSettings()
+        {
+            try
+            {
+                var settings = new AppSettings
+                {
+                    ViberPath = ViberPath ?? string.Empty,
+                    CustomProfilesDir = CustomProfilesDir ?? string.Empty
+                };
+                var json = System.Text.Json.JsonSerializer.Serialize(settings, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(SettingsFilePath, json);
+            }
+            catch { }
+        }
+
+        public void ChangeProfilesDirectory(string newPath)
+        {
+            if (string.IsNullOrEmpty(newPath) || !Directory.Exists(newPath)) return;
+            CustomProfilesDir = newPath;
+            _profilesDir = newPath;
+            SaveSettings();
+            LoadProfiles();
+            SetStatus($"Switched profiles data folder to: {newPath}");
+        }
+
         public MainWindowViewModel()
         {
+            // Tải cấu hình đã lưu
+            LoadSettings();
+
             // Xác định thư mục lưu trữ profile:
-            // 1. Kiểm tra thư mục làm việc hiện tại (được ưu tiên khi chạy dev)
-            var currentDir = Directory.GetCurrentDirectory();
-            var devProfilesPath = Path.Combine(currentDir, "viber_profiles");
-            
-            if (Directory.Exists(devProfilesPath))
+            if (!string.IsNullOrEmpty(CustomProfilesDir) && Directory.Exists(CustomProfilesDir))
             {
-                _profilesDir = devProfilesPath;
+                _profilesDir = CustomProfilesDir;
             }
             else
             {
-                // 2. Fallback về thư mục chứa file chạy (.exe)
-                _profilesDir = Path.Combine(AppContext.BaseDirectory, "viber_profiles");
+                var currentDir = Directory.GetCurrentDirectory();
+                var devProfilesPath = Path.Combine(currentDir, "viber_profiles");
+                
+                if (Directory.Exists(devProfilesPath))
+                {
+                    _profilesDir = devProfilesPath;
+                }
+                else
+                {
+                    _profilesDir = Path.Combine(AppContext.BaseDirectory, "viber_profiles");
+                }
+                CustomProfilesDir = _profilesDir;
             }
             
             Directory.CreateDirectory(_profilesDir);
 
-            ViberPath = ProfileHelper.DetectViberPath();
+            if (string.IsNullOrEmpty(ViberPath) || !File.Exists(ViberPath))
+            {
+                ViberPath = ProfileHelper.DetectViberPath();
+            }
 
             CreateProfileCommand = new AsyncRelayCommand(CreateProfileAsync);
             LaunchSelectedCommand = new RelayCommand(LaunchSelected);
@@ -109,8 +177,19 @@ namespace AnvViberManager.ViewModels
             DeleteSelectedCommand = new AsyncRelayCommand(DeleteSelectedAsync);
             ExportProfilesCommand = new AsyncRelayCommand(ExportProfilesAsync);
             ImportProfilesCommand = new AsyncRelayCommand(ImportProfilesAsync);
-            BrowseViberCommand = new RelayCommand<string>(path => { if (path != null) ViberPath = path; });
-            AutoDetectViberCommand = new RelayCommand(AutoDetectViber);
+            BrowseViberCommand = new RelayCommand<string>(path => { 
+                if (path != null) {
+                    ViberPath = path; 
+                    SaveSettings();
+                }
+            });
+            BrowseProfilesDirCommand = new RelayCommand<string>(path => {
+                if (path != null) ChangeProfilesDirectory(path);
+            });
+            AutoDetectViberCommand = new RelayCommand(() => {
+                AutoDetectViber();
+                SaveSettings();
+            });
             ToggleSelectAllCommand = new RelayCommand<bool>(ToggleSelectAll);
             ClearFilterCommand = new RelayCommand(ClearFilter);
 

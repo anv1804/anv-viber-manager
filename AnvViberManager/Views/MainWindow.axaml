@@ -290,6 +290,15 @@
           <!-- Bottom Section: Viber Path config (Moved to bottom of sidebar) -->
           <StackPanel Grid.Row="1" Spacing="5" Margin="0,15,0,5">
             <Border Height="1" Background="#E4E4E7" Margin="0,0,0,10"/>
+            
+            <!-- Custom Data Folder Section -->
+            <TextBlock Text="PROFILES DATA FOLDER" FontSize="11" FontWeight="Bold" Foreground="#71717A"/>
+            <TextBox Text="{Binding CustomProfilesDir, Mode=OneWay}" IsReadOnly="True" Watermark="Custom profiles path..." Height="32" Background="#FFFFFF" 
+                     Foreground="#18181B" BorderBrush="#D4D4D8" BorderThickness="1" CornerRadius="4" 
+                     Padding="8,5" FontSize="12"/>
+            <Button Content="Change Location" FontSize="11" Background="#E4E4E7" Foreground="#18181B" Height="28" Padding="5"
+                    Click="OnBrowseProfilesDirClick" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,0,0,10"/>
+
             <Grid ColumnDefinitions="*,Auto">
               <TextBlock Grid.Column="0" Text="VIBER EXECUTABLE" FontSize="11" FontWeight="Bold" Foreground="#71717A"/>
               <TextBlock Grid.Column="1" Text="✓" Foreground="#12B76A" FontSize="11" FontWeight="Bold" 

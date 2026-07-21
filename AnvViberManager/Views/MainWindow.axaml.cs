@@ -130,6 +130,22 @@ namespace AnvViberManager.Views
             }
         }
 
+        private async void OnBrowseProfilesDirClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+        {
+            if (DataContext is MainWindowViewModel vm)
+            {
+                var dialog = new OpenFolderDialog
+                {
+                    Title = "Select Custom Profiles Storage Folder"
+                };
+                var result = await dialog.ShowAsync(this);
+                if (!string.IsNullOrEmpty(result))
+                {
+                    vm.ChangeProfilesDirectory(result);
+                }
+            }
+        }
+
         private async void OnBrowseViberClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
         {
             if (DataContext is MainWindowViewModel vm)

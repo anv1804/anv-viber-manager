@@ -373,6 +373,11 @@ namespace AnvViberManager.Utils
             startInfo.EnvironmentVariables["XDG_CONFIG_HOME"] = Path.Combine(home, ".config");
             startInfo.EnvironmentVariables["XDG_DATA_HOME"] = Path.Combine(home, ".local", "share");
             
+            // Giả lập hostname độc lập cho từng profile để Viber Server phân biệt máy
+            var virtualHost = $"VIBER-{actualName.ToUpper()}";
+            startInfo.EnvironmentVariables["HOSTNAME"] = virtualHost;
+            startInfo.EnvironmentVariables["COMPUTERNAME"] = virtualHost;
+            
             if (OperatingSystem.IsWindows())
             {
                 startInfo.EnvironmentVariables["USERPROFILE"] = home;
