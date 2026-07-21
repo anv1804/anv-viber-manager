@@ -75,7 +75,7 @@ class Dashboard:
         s.configure("TCombobox", fieldbackground=BG_CARD, background=BTN_DARK,
                     foreground=TEXT_MAIN, arrowcolor=TEXT_MUTED, borderwidth=0,
                     darkcolor=BG_CARD, lightcolor=BG_CARD, selectbackground="#2D2D3A",
-                    selectforeground=TEXT_MAIN)
+                    selectforeground=TEXT_MAIN, padding=(8, 5, 8, 5)) # padding matching entry
         s.map("TCombobox", fieldbackground=[("readonly", BG_CARD)],
               foreground=[("readonly", TEXT_MAIN)])
 
@@ -166,12 +166,14 @@ class Dashboard:
         # Style configurations for aligned height
         # Container widgets acting as wrappers with padding for Entry
         def create_entry_container(parent, placeholder, var):
+            # Cả container và entry đều set border = 0 và highlightthickness = 0 để dập tắt viền trắng của hệ điều hành
             container = tk.Frame(parent, bg=BG_CARD, bd=0, highlightthickness=0)
             container.pack(side=tk.LEFT, padx=6)
             
             entry = tk.Entry(container, bg=BG_CARD, fg=TEXT_MAIN,
-                             insertbackground=TEXT_MAIN, font=("Segoe UI", 10), bd=0, width=16)
-            entry.pack(side=tk.LEFT, padx=10, pady=5, ipady=3) # Padding text here
+                             insertbackground=TEXT_MAIN, font=("Segoe UI", 10), 
+                             bd=0, highlightthickness=0, width=16)
+            entry.pack(side=tk.LEFT, padx=10, pady=5, ipady=3) 
             self._setup_placeholder(entry, placeholder, var)
             return entry
 
@@ -187,10 +189,12 @@ class Dashboard:
         cb_container = tk.Frame(filt_controls, bg=BG_MAIN)
         cb_container.pack(side=tk.LEFT, padx=6)
         
+        # Style Combobox padding to match Entry exactly
         cb = ttk.Combobox(cb_container, textvariable=self._f_status,
                           values=["All Status", "Running", "Idle"],
-                          state="readonly", width=12, font=("Segoe UI", 10))
-        cb.pack(side=tk.LEFT, ipady=3) # Matching height padding
+                          state="readonly", width=12, font=("Segoe UI", 10), style="TCombobox")
+        # Combobox pack padding matches Entry height
+        cb.pack(side=tk.LEFT, ipady=3) 
         self._f_status.trace_add("write", lambda *_: self._apply_filter())
 
         # Clear filter button matching the exact height
