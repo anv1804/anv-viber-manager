@@ -4,3 +4,4 @@ obj/
 *.db-wal
 *.db-shm
 settings.json
+viber_profiles/

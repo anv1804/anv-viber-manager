@@ -15,8 +15,6 @@ namespace AnvViberManager.Views
         public MainWindow()
         {
             InitializeComponent();
-            var vm = new MainWindowViewModel();
-            DataContext = vm;
         }
 
         protected override void OnDataContextChanged(EventArgs e)
