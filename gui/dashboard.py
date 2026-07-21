@@ -156,8 +156,9 @@ class Dashboard:
         filt_bar.pack(fill=tk.X, side=tk.TOP, padx=15, pady=(15, 8))
         filt_bar.pack_propagate(False)
 
-        tk.Label(filt_bar, text="Profiles List", font=("Segoe UI", 11, "bold"),
-                 bg=BG_MAIN, fg=TEXT_MAIN).pack(side=tk.LEFT, fill=tk.Y)
+        self.lbl_title = tk.Label(filt_bar, text="Profiles List", font=("Segoe UI", 11, "bold"),
+                                  bg=BG_MAIN, fg=TEXT_MAIN)
+        self.lbl_title.pack(side=tk.LEFT, fill=tk.Y)
 
         # Filter Controls wrapped inside a single CARD container
         self.search_card = tk.Frame(filt_bar, bg=BG_CARD, bd=0, highlightthickness=0)
@@ -270,6 +271,10 @@ class Dashboard:
         self._apply_filter()
 
     def _apply_filter(self):
+        # Update dynamic profile count in title
+        total_cnt = len(self._all_profiles)
+        self.lbl_title.config(text=f"Profiles List ({total_cnt})")
+
         sel_names = {self.tree.item(i, "values")[2]
                      for i in self.tree.selection()
                      if len(self.tree.item(i, "values")) > 2}
