@@ -184,8 +184,13 @@ namespace AnvViberManager.Utils
             {
                 CopyDirectorySafe(viberPcSrc, tempDir);
 
-                // Nén tất cả content của .ViberPC/ vào zip, đường dẫn relative từ .ViberPC/
-                // Đây là format chuẩn: config.db, SĐT/ ở root zip
+                // Copy cả profile.json của profile đó vào thư mục tạm nếu có
+                var metaFile = Path.Combine(sourceDir, "profile.json");
+                if (File.Exists(metaFile))
+                {
+                    File.Copy(metaFile, Path.Combine(tempDir, "profile.json"), true);
+                }
+
                 using var zf = new System.IO.Compression.ZipArchive(
                     File.OpenWrite(zipPath), ZipArchiveMode.Create, false);
 
@@ -269,15 +274,23 @@ namespace AnvViberManager.Utils
             var viberPcDst = Path.Combine(destDir, "data", "Home", ".ViberPC");
             EnsureStandardProfileStructure(destDir);
 
-            // Giải nén thẳng vào .ViberPC/ — đây là chuẩn của file .viberprofile
-            // Vì khi pack ta đã nén relative từ .ViberPC/, giải nén vào .ViberPC/ là đúng vị trí
             using var zip = ZipFile.OpenRead(zipPath);
             foreach (var entry in zip.Entries)
             {
                 if (string.IsNullOrEmpty(entry.Name)) continue; // bỏ qua directory entries
-                var destPath = Path.Combine(viberPcDst, entry.FullName.Replace('/', Path.DirectorySeparatorChar));
-                Directory.CreateDirectory(Path.GetDirectoryName(destPath)!);
-                try { entry.ExtractToFile(destPath, overwrite: true); } catch { }
+                
+                // Nếu file là profile.json thì giải nén ra thư mục gốc của Profile chứ không nhét vào .ViberPC
+                if (entry.FullName.Equals("profile.json", StringComparison.OrdinalIgnoreCase))
+                {
+                    var destPath = Path.Combine(destDir, "profile.json");
+                    try { entry.ExtractToFile(destPath, overwrite: true); } catch { }
+                }
+                else
+                {
+                    var destPath = Path.Combine(viberPcDst, entry.FullName.Replace('/', Path.DirectorySeparatorChar));
+                    Directory.CreateDirectory(Path.GetDirectoryName(destPath)!);
+                    try { entry.ExtractToFile(destPath, overwrite: true); } catch { }
+                }
             }
         }
 
